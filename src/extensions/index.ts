@@ -17,6 +17,9 @@ import { registerTransferTools } from './transfer-tools.js'
 import { registerRevokeTools } from './revoke-tools.js'
 import { registerSwapTools } from './swap-tools.js'
 import { registerPolicyTools } from './policy-tools.js'
+import { registerAaveTools } from './aave-tools.js'
+import { registerRecurringTools } from './recurring-tools.js'
+import { registerAuditTools } from './audit-tools.js'
 import type { MakiContext } from './context.js'
 
 export default function makiExtension(pi: ExtensionAPI) {
@@ -71,4 +74,7 @@ export default function makiExtension(pi: ExtensionAPI) {
   registerRevokeTools(pi, getCtx)
   registerSwapTools(pi, getCtx)
   registerPolicyTools(pi, getCtx)
+  registerAaveTools(pi, getCtx)
+  registerRecurringTools(pi, getCtx)
+  registerAuditTools(pi)
 }
