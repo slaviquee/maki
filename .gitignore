@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.DS_Store
+*.tsbuildinfo
+signer-daemon/.build/
+signer-daemon/.swiftpm/
+.maki/

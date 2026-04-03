@@ -1,0 +1,56 @@
+{
+  "name": "maki",
+  "version": "0.1.0",
+  "description": "Terminal AI agent for on-chain life — swaps, transfers, DeFi, ENS — with private keys locked in Apple Secure Enclave",
+  "type": "module",
+  "piConfig": {
+    "name": "maki",
+    "configDir": ".maki"
+  },
+  "bin": {
+    "maki": "dist/cli.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "tsc -p tsconfig.build.json && chmod +x dist/cli.js",
+    "dev": "tsc -p tsconfig.build.json --watch",
+    "test": "vitest --run",
+    "test:watch": "vitest",
+    "lint": "eslint src/ && prettier --check src/",
+    "lint:fix": "eslint src/ --fix && prettier --write src/",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@mariozechner/pi-coding-agent": "^0.65.0",
+    "@mariozechner/pi-agent-core": "^0.65.0",
+    "@mariozechner/pi-ai": "^0.65.0",
+    "@mariozechner/pi-tui": "^0.65.0",
+    "@sinclair/typebox": "^0.34.0",
+    "viem": "^2.47.0",
+    "permissionless": "^0.3.0",
+    "better-sqlite3": "^12.0.0",
+    "yaml": "^2.8.0",
+    "chalk": "^5.4.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.0",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.2.0",
+    "eslint": "^9.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "prettier": "^3.5.0"
+  },
+  "pi": {
+    "extensions": ["./dist/extensions"],
+    "skills": ["./src/skills"]
+  },
+  "engines": {
+    "node": ">=20.6.0"
+  },
+  "keywords": ["pi-package", "web3", "wallet", "defi", "erc-4337"]
+}
