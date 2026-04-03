@@ -1,11 +1,8 @@
 import type { ExtensionAPI } from '@mariozechner/pi-coding-agent'
 import { Type } from '@sinclair/typebox'
-import { createAuditLog } from '../wallet-core/audit-log.js'
-import { paths } from '../config/paths.js'
+import type { MakiContext } from './context.js'
 
-export function registerAuditTools(pi: ExtensionAPI) {
-  const auditLog = createAuditLog(paths.db)
-
+export function registerAuditTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
   pi.registerTool({
     name: 'get_audit_log',
     label: 'Get Audit Log',
@@ -16,7 +13,8 @@ export function registerAuditTools(pi: ExtensionAPI) {
     }),
 
     async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
-      const entries = auditLog.getRecent(params.limit ?? 20)
+      const maki = getCtx()
+      const entries = maki.auditLog.getRecent(params.limit ?? 20)
 
       if (entries.length === 0) {
         return {

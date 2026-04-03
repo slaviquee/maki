@@ -1,6 +1,6 @@
 import { http, type Chain } from 'viem'
 import { createBundlerClient, type SmartAccount } from 'viem/account-abstraction'
-import { createPimlicoClient, type PimlicoClient } from 'permissionless/clients/pimlico'
+import { createPimlicoClient } from 'permissionless/clients/pimlico'
 import type { SupportedChainId } from '../config/types.js'
 import { CHAINS } from './chains.js'
 
@@ -17,7 +17,6 @@ export interface BundlerConfig {
 /**
  * Creates a Pimlico bundler client for submitting UserOperations.
  */
-// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function createPimlicoBundlerClient(config: BundlerConfig): ReturnType<typeof createPimlicoClient> {
   const slug = PIMLICO_CHAIN_SLUGS[config.chainId]
   if (!slug) throw new Error(`No bundler available for chain ${config.chainId}`)

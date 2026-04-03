@@ -37,8 +37,17 @@ extension SecureEnclaveSigner: SignerBackend {
     }
 
     func approveAction(_ params: ApproveActionParams) -> ApproveActionResult {
-        // Secure Enclave approval requires Touch ID via sign flow
-        ApproveActionResult(approved: true, reason: nil)
+        // For Secure Enclave, approveAction uses the same Touch ID gate as signHash.
+        // We sign a hash of the summary to force biometric authentication.
+        let summaryData = params.summary.data(using: .utf8) ?? Data()
+        do {
+            _ = try sign(hash: summaryData, reason: params.summary)
+            return ApproveActionResult(approved: true, reason: nil)
+        } catch SecureEnclaveSigner.SignerError.userCancelled {
+            return ApproveActionResult(approved: false, reason: "User cancelled")
+        } catch {
+            return ApproveActionResult(approved: false, reason: error.localizedDescription)
+        }
     }
 }
 

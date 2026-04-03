@@ -1,6 +1,7 @@
 import type { ExtensionAPI } from '@mariozechner/pi-coding-agent'
 import { Type } from '@sinclair/typebox'
 import { getAaveAccountSummary, getAaveAddresses, buildClaimAllRewards } from '../adapters/aave/index.js'
+import { getAllATokens } from '../adapters/aave/markets.js'
 import { chainName } from '../wallet-core/chains.js'
 import { executeWriteAction } from '../wallet-core/execute.js'
 import type { MakiContext } from './context.js'
@@ -57,24 +58,27 @@ export function registerAaveTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
   pi.registerTool({
     name: 'claim_aave_rewards',
     label: 'Claim Aave Rewards',
-    description: 'Claim all pending Aave V3 rewards. This is a medium-risk write action.',
+    description: 'Claim all pending Aave V3 rewards across all known markets. This is a medium-risk write action.',
     promptSnippet: 'claim_aave_rewards: claim Aave reward tokens',
-    parameters: Type.Object({
-      aTokens: Type.Array(Type.String(), {
-        description: 'List of aToken addresses to claim rewards for',
-      }),
-    }),
+    // No aToken parameter — resolved deterministically from known markets
+    parameters: Type.Object({}),
 
-    async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
+    async execute(_toolCallId, _params, _signal, _onUpdate, _ctx) {
       const maki = getCtx()
       const from = maki.config.smartAccountAddress
       if (!from) throw new Error('No smart account configured.')
 
-      const call = buildClaimAllRewards(
-        maki.config.chainId,
-        params.aTokens as `0x${string}`[],
-        from,
-      )
+      // Resolve aTokens deterministically from the known market registry
+      // Model output is never used as calldata input
+      const aTokens = getAllATokens(maki.config.chainId)
+      if (aTokens.length === 0) {
+        return {
+          content: [{ type: 'text' as const, text: `No known Aave markets on ${chainName(maki.config.chainId)}.` }],
+          details: { available: false },
+        }
+      }
+
+      const call = buildClaimAllRewards(maki.config.chainId, aTokens, from)
 
       if (!call) {
         return {
@@ -99,6 +103,8 @@ export function registerAaveTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
         maki.signer,
         maki.policy,
         from,
+        maki.spending,
+        maki.auditLog,
       )
 
       if (result.status !== 'approved') {

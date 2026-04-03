@@ -1,10 +1,9 @@
 import type { ExtensionAPI } from '@mariozechner/pi-coding-agent'
 import { Type } from '@sinclair/typebox'
-import { formatUnits, parseUnits } from 'viem'
 import { buildErc20Transfer, buildNativeTransfer } from '../adapters/erc20/index.js'
 import { findToken } from '../wallet-core/tokens.js'
 import { resolveEns } from '../wallet-core/ens.js'
-import { executeWriteAction, renderActionSummary } from '../wallet-core/execute.js'
+import { executeWriteAction } from '../wallet-core/execute.js'
 import type { MakiContext } from './context.js'
 
 export function registerTransferTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
@@ -28,7 +27,6 @@ export function registerTransferTools(pi: ExtensionAPI, getCtx: () => MakiContex
       const from = maki.config.smartAccountAddress
       if (!from) throw new Error('No smart account configured.')
 
-      // Resolve ENS if needed
       let to = params.to as `0x${string}`
       if (params.to.endsWith('.eth')) {
         const resolved = await resolveEns(params.to)
@@ -49,12 +47,15 @@ export function registerTransferTools(pi: ExtensionAPI, getCtx: () => MakiContex
             type: 'transfer',
             recipient: to,
             token: 'ETH',
+            // TODO: populate amountUsd from price feed when available
           },
         },
         maki.chainClient,
         maki.signer,
         maki.policy,
         from,
+        maki.spending,
+        maki.auditLog,
       )
 
       if (result.status !== 'approved') {
@@ -65,12 +66,7 @@ export function registerTransferTools(pi: ExtensionAPI, getCtx: () => MakiContex
       }
 
       return {
-        content: [
-          {
-            type: 'text' as const,
-            text: `Transfer approved and ready to submit.\n\n${result.summary}\n\nNote: Actual on-chain submission requires a bundler API key (Stage 5).`,
-          },
-        ],
+        content: [{ type: 'text' as const, text: `Transfer approved and ready to submit.\n\n${result.summary}` }],
         details: result,
       }
     },
@@ -97,15 +93,11 @@ export function registerTransferTools(pi: ExtensionAPI, getCtx: () => MakiContex
       const from = maki.config.smartAccountAddress
       if (!from) throw new Error('No smart account configured.')
 
-      // Find token in registry
       const tokenInfo = findToken(maki.config.chainId, params.token)
       if (!tokenInfo) {
-        throw new Error(
-          `Token "${params.token}" not found in verified registry. Only verified tokens are supported.`,
-        )
+        throw new Error(`Token "${params.token}" not found in verified registry. Only verified tokens are supported.`)
       }
 
-      // Resolve ENS if needed
       let to = params.to as `0x${string}`
       if (params.to.endsWith('.eth')) {
         const resolved = await resolveEns(params.to)
@@ -132,6 +124,8 @@ export function registerTransferTools(pi: ExtensionAPI, getCtx: () => MakiContex
         maki.signer,
         maki.policy,
         from,
+        maki.spending,
+        maki.auditLog,
       )
 
       if (result.status !== 'approved') {
@@ -142,12 +136,7 @@ export function registerTransferTools(pi: ExtensionAPI, getCtx: () => MakiContex
       }
 
       return {
-        content: [
-          {
-            type: 'text' as const,
-            text: `Transfer approved and ready to submit.\n\n${result.summary}\n\nNote: Actual on-chain submission requires a bundler API key (Stage 5).`,
-          },
-        ],
+        content: [{ type: 'text' as const, text: `Transfer approved and ready to submit.\n\n${result.summary}` }],
         details: result,
       }
     },

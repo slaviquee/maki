@@ -2,6 +2,8 @@ import type { ExtensionAPI } from '@mariozechner/pi-coding-agent'
 import { bootstrap } from '../config/bootstrap.js'
 import { createBaseClient } from '../wallet-core/client.js'
 import { createPolicyStore } from '../policy/store.js'
+import { createSpendingTracker } from '../policy/spending-tracker.js'
+import { createAuditLog } from '../wallet-core/audit-log.js'
 import { createMockSigner } from '../signer/mock-signer.js'
 import { createSignerIpcClient } from '../signer/ipc-client.js'
 import { chainName } from '../wallet-core/chains.js'
@@ -20,7 +22,7 @@ import { registerPolicyTools } from './policy-tools.js'
 import { registerAaveTools } from './aave-tools.js'
 import { registerRecurringTools } from './recurring-tools.js'
 import { registerAuditTools } from './audit-tools.js'
-import type { MakiContext } from './context.js'
+import type { MakiContext, SignerMode } from './context.js'
 
 export default function makiExtension(pi: ExtensionAPI) {
   let ctx: MakiContext | undefined
@@ -34,25 +36,40 @@ export default function makiExtension(pi: ExtensionAPI) {
     const config = bootstrap()
     const policy = createPolicyStore(config.policyPath)
     const chainClient = createBaseClient(config.chainId, config.rpcUrl)
+    const spending = createSpendingTracker(config.dbPath)
+    const auditLog = createAuditLog(config.dbPath)
 
-    // Connect to signer: use mock if configured, otherwise try IPC
+    // Connect to signer
     let signer
+    let signerMode: SignerMode
     if (config.signerType === 'mock') {
       signer = createMockSigner()
+      signerMode = 'mock'
     } else {
       signer = createSignerIpcClient(config.socketPath)
       try {
         await signer.connect()
-      } catch {
-        // Fall back to mock if daemon not running
+        signerMode = 'ipc'
+      } catch (err) {
+        // Surface the failure clearly — do NOT silently fallback
         signer = createMockSigner()
+        signerMode = 'mock-fallback'
+        const message = err instanceof Error ? err.message : 'Unknown error'
+        if (extCtx.hasUI) {
+          extCtx.ui.notify(
+            `Signer daemon not available (${message}). Running in mock mode — write actions use a dummy signer. Start the signer daemon for real signing.`,
+            'warning',
+          )
+        }
+        auditLog.log('write_denied', `Signer daemon unavailable, fell back to mock: ${message}`)
       }
     }
 
-    ctx = { config, signer, policy, chainClient }
+    ctx = { config, signer, signerMode, policy, chainClient, spending, auditLog }
 
     if (extCtx.hasUI) {
-      extCtx.ui.setStatus('maki', `maki | ${chainName(config.chainId)}`)
+      const modeLabel = signerMode === 'mock-fallback' ? 'MOCK (daemon unavailable)' : chainName(config.chainId)
+      extCtx.ui.setStatus('maki', `maki | ${modeLabel}`)
     }
   })
 
@@ -76,5 +93,5 @@ export default function makiExtension(pi: ExtensionAPI) {
   registerPolicyTools(pi, getCtx)
   registerAaveTools(pi, getCtx)
   registerRecurringTools(pi, getCtx)
-  registerAuditTools(pi)
+  registerAuditTools(pi, getCtx)
 }

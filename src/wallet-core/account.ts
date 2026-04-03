@@ -3,9 +3,6 @@ import { toCoinbaseSmartAccount } from 'viem/account-abstraction'
 import type { SignerClient } from '../signer/types.js'
 import { createWebAuthnAccount } from './webauthn-adapter.js'
 
-// Coinbase Smart Wallet factory addresses
-const FACTORY_V1_1 = '0xBA5ED110eFDBa3D005bfC882d75358ACBbB85842' as const
-
 export interface SmartAccountInfo {
   address: `0x${string}`
   isDeployed: boolean

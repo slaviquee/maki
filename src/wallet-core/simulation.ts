@@ -1,4 +1,4 @@
-import { type PublicClient, type Hex, formatEther, decodeFunctionResult, encodeFunctionData } from 'viem'
+import { type PublicClient, type Hex, formatEther } from 'viem'
 
 export interface SimulationCall {
   to: `0x${string}`

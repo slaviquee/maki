@@ -2,6 +2,9 @@ import type { ExtensionAPI } from '@mariozechner/pi-coding-agent'
 import { Type } from '@sinclair/typebox'
 import { createRecurringActionStore } from '../scheduler/store.js'
 import type { RecurringAction } from '../scheduler/types.js'
+import { findToken } from '../wallet-core/tokens.js'
+import { resolveEns } from '../wallet-core/ens.js'
+import { checkAction } from '../policy/engine.js'
 import { paths } from '../config/paths.js'
 import type { MakiContext } from './context.js'
 
@@ -49,6 +52,41 @@ export function registerRecurringTools(pi: ExtensionAPI, getCtx: () => MakiConte
         }
       }
 
+      // Validate token against registry
+      const tokenInfo = findToken(maki.config.chainId, params.token)
+      if (!tokenInfo && params.token !== 'ETH') {
+        return {
+          content: [{ type: 'text' as const, text: `Token "${params.token}" not found in verified registry.` }],
+          details: { error: 'token_not_found' },
+        }
+      }
+
+      // Resolve recipient ENS deterministically at creation time
+      let resolvedTo = params.to
+      if (params.to.endsWith('.eth')) {
+        const resolved = await resolveEns(params.to)
+        if (!resolved.address) {
+          return {
+            content: [{ type: 'text' as const, text: `Could not resolve ENS name "${params.to}".` }],
+            details: { error: 'ens_failed' },
+          }
+        }
+        resolvedTo = resolved.address
+      }
+
+      // Policy check at creation time
+      const policyCheck = checkAction(policy, 1, {
+        type: 'transfer',
+        recipient: resolvedTo,
+        token: params.token,
+      })
+      if (!policyCheck.allowed) {
+        return {
+          content: [{ type: 'text' as const, text: `Recurring transfer denied by policy: ${policyCheck.reason}` }],
+          details: { error: 'policy_denied', reason: policyCheck.reason },
+        }
+      }
+
       const now = Date.now()
       const intervalMs = params.intervalHours * 60 * 60 * 1000
       const expiresAt = now + (params.expiresInDays ?? 30) * 24 * 60 * 60 * 1000
@@ -59,13 +97,17 @@ export function registerRecurringTools(pi: ExtensionAPI, getCtx: () => MakiConte
         params: {
           type: 'transfer',
           token: params.token,
-          to: params.to,
+          to: resolvedTo, // store resolved address, not raw ENS
           amount: params.amount,
         },
         intervalMs,
         nextRunAt: now + intervalMs,
         expiresAt,
         maxRuns: params.maxRuns,
+      })
+
+      maki.auditLog.log('recurring_created', `Recurring transfer: ${params.amount} ${params.token} to ${resolvedTo}`, {
+        actionId: action.id,
       })
 
       return {

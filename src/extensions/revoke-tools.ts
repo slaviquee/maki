@@ -2,7 +2,6 @@ import type { ExtensionAPI } from '@mariozechner/pi-coding-agent'
 import { Type } from '@sinclair/typebox'
 import { buildRevokeApproval } from '../adapters/erc20/index.js'
 import { findToken } from '../wallet-core/tokens.js'
-import { getKnownSpenders } from '../wallet-core/allowances.js'
 import { executeWriteAction } from '../wallet-core/execute.js'
 import type { MakiContext } from './context.js'
 
@@ -52,6 +51,8 @@ export function registerRevokeTools(pi: ExtensionAPI, getCtx: () => MakiContext)
         maki.signer,
         maki.policy,
         from,
+        maki.spending,
+        maki.auditLog,
       )
 
       if (result.status !== 'approved') {

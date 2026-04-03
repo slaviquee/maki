@@ -1,11 +1,12 @@
-import { formatEther, formatUnits, type PublicClient } from 'viem'
-import type { SmartAccount } from 'viem/account-abstraction'
+import { formatEther, type PublicClient, keccak256, toBytes } from 'viem'
 import type { SignerClient } from '../signer/types.js'
 import type { PolicyStore } from '../policy/store.js'
+import type { SpendingTracker } from '../policy/spending-tracker.js'
+import type { AuditLog } from './audit-log.js'
 import { checkAction } from '../policy/engine.js'
-import type { ActionClass, ActionDetails } from '../policy/types.js'
+import type { ActionDetails } from '../policy/types.js'
 import { simulateCall } from './simulation.js'
-import type { UserOpCall, UserOpPlan } from './userop.js'
+import type { UserOpPlan } from './userop.js'
 
 export interface WriteAction {
   plan: UserOpPlan
@@ -16,6 +17,7 @@ export interface WriteResult {
   status: 'approved' | 'denied' | 'simulation_failed' | 'rejected' | 'error'
   summary: string
   error?: string
+  signatureHash?: `0x${string}`
 }
 
 /**
@@ -60,11 +62,11 @@ export function renderActionSummary(action: WriteAction): string {
 
 /**
  * Executes the full write pipeline:
- * 1. Policy check
- * 2. Simulate
- * 3. Render summary
- * 4. Request approval via signer
- * 5. Return result (actual signing/submission is handled by the caller)
+ * 1. Policy check (with spending tracker for daily limits)
+ * 2. Simulate (skip approval-only calls in multi-step plans)
+ * 3. Render deterministic summary
+ * 4. Request Touch ID approval via signHash (not the no-op approveAction)
+ * 5. Log to audit log
  */
 export async function executeWriteAction(
   action: WriteAction,
@@ -72,22 +74,29 @@ export async function executeWriteAction(
   signer: SignerClient,
   policy: PolicyStore,
   from: `0x${string}`,
+  spending?: SpendingTracker,
+  auditLog?: AuditLog,
 ): Promise<WriteResult> {
   const { plan, policyDetails } = action
+  const summary = renderActionSummary(action)
 
-  // 1. Policy check
-  const policyResult = checkAction(policy.load(), plan.actionClass, policyDetails)
+  // 1. Policy check (with spending tracker for daily limits)
+  const policyResult = checkAction(policy.load(), plan.actionClass, policyDetails, spending)
 
   if (!policyResult.allowed) {
+    auditLog?.log('policy_denied', policyResult.reason, policyDetails as unknown as Record<string, unknown>)
     return {
       status: 'denied',
-      summary: renderActionSummary(action),
+      summary,
       error: `Policy denied: ${policyResult.reason}`,
     }
   }
 
-  // 2. Simulate each call
-  for (const call of plan.calls) {
+  // 2. Simulate — for multi-step plans (e.g. approve+swap), only simulate the
+  // final action call since earlier approve calls depend on sequence ordering
+  const callsToSimulate = plan.calls.length > 1 ? [plan.calls[plan.calls.length - 1]!] : plan.calls
+
+  for (const call of callsToSimulate) {
     const simResult = await simulateCall(client, from, {
       to: call.to,
       data: call.data,
@@ -95,35 +104,45 @@ export async function executeWriteAction(
     })
 
     if (!simResult.success) {
+      auditLog?.log('simulation_failed', simResult.error ?? 'Unknown', policyDetails as unknown as Record<string, unknown>)
       return {
         status: 'simulation_failed',
-        summary: renderActionSummary(action),
+        summary,
         error: `Simulation failed: ${simResult.error}`,
       }
     }
   }
 
-  // 3. Render summary
-  const summary = renderActionSummary(action)
-
-  // 4. Request approval
+  // 3. Request approval via signHash (real Touch ID, not the no-op approveAction)
   if (policyResult.approvalMode === 'touch_id') {
-    const approval = await signer.approveAction({
-      summary,
+    // Hash the summary deterministically for the signer to approve
+    const approvalHash = keccak256(toBytes(summary))
+
+    const signResult = await signer.signHash({
+      hash: approvalHash as `0x${string}`,
+      actionSummary: summary,
       actionClass: plan.actionClass,
-      details: policyDetails as unknown as Record<string, unknown>,
     })
 
-    if (!approval.approved) {
+    if (!signResult.approved) {
+      auditLog?.log('user_rejected', summary, policyDetails as unknown as Record<string, unknown>)
       return {
         status: 'rejected',
         summary,
-        error: approval.reason ?? 'User rejected',
+        error: 'User rejected the action',
       }
     }
   }
 
-  // 5. Approved — caller will handle signing and submission
+  // 4. Record spending
+  if (spending && policyDetails.amountUsd !== undefined) {
+    const spendingType = policyDetails.type === 'swap' ? 'swap' : 'transfer'
+    spending.record(spendingType, policyDetails.amountUsd)
+  }
+
+  // 5. Log approval
+  auditLog?.log('write_approved', summary, policyDetails as unknown as Record<string, unknown>)
+
   return {
     status: 'approved',
     summary,

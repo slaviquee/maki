@@ -1,4 +1,4 @@
-import { encodeFunctionData, type Hex, parseUnits } from 'viem'
+import { encodeFunctionData, type Hex } from 'viem'
 import { erc20Abi } from '../../wallet-core/erc20-abi.js'
 import { swapRouterAbi } from './abis.js'
 import { getUniswapAddresses } from './addresses.js'
@@ -21,7 +21,9 @@ export function buildSwapCalls(
   const amountOutMinimum =
     quote.amountOutRaw - (quote.amountOutRaw * BigInt(slippageBps)) / 10000n
 
-  const isNativeIn = quote.tokenIn.symbol === 'ETH' || quote.tokenIn.address === addresses.weth
+  // Only native ETH (symbol "ETH", no contract address) triggers native path.
+  // WETH is an ERC-20 and must go through the approve+swap path.
+  const isNativeIn = quote.tokenIn.symbol === 'ETH' && quote.tokenIn.address !== addresses.weth
   const calls: UserOpCall[] = []
 
   // If tokenIn is not native ETH, we need an approval first

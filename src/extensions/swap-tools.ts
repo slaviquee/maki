@@ -128,6 +128,8 @@ export function registerSwapTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
         maki.signer,
         maki.policy,
         from,
+        maki.spending,
+        maki.auditLog,
       )
 
       if (result.status !== 'approved') {

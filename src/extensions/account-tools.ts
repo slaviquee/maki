@@ -1,6 +1,6 @@
 import type { ExtensionAPI } from '@mariozechner/pi-coding-agent'
 import { Type } from '@sinclair/typebox'
-import { createSmartAccount, getSmartAccountInfo } from '../wallet-core/account.js'
+import { getSmartAccountInfo } from '../wallet-core/account.js'
 import { chainName } from '../wallet-core/chains.js'
 import type { MakiContext } from './context.js'
 
