@@ -67,6 +67,7 @@ export interface ActionDetails {
   protocol?: string
   token?: string
   amountUsd?: number
+  slippageBps?: number
 }
 
 export type PolicyDecision =

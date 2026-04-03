@@ -15,6 +15,8 @@ import { registerAccountTools } from './account-tools.js'
 import { registerSimulationTools } from './simulation-tools.js'
 import { registerTransferTools } from './transfer-tools.js'
 import { registerRevokeTools } from './revoke-tools.js'
+import { registerSwapTools } from './swap-tools.js'
+import { registerPolicyTools } from './policy-tools.js'
 import type { MakiContext } from './context.js'
 
 export default function makiExtension(pi: ExtensionAPI) {
@@ -67,4 +69,6 @@ export default function makiExtension(pi: ExtensionAPI) {
   registerSimulationTools(pi, getCtx)
   registerTransferTools(pi, getCtx)
   registerRevokeTools(pi, getCtx)
+  registerSwapTools(pi, getCtx)
+  registerPolicyTools(pi, getCtx)
 }
