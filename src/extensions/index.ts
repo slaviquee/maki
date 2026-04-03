@@ -13,6 +13,8 @@ import { registerSignerTools } from './signer-tools.js'
 import { registerDoctorTool } from './doctor-tool.js'
 import { registerAccountTools } from './account-tools.js'
 import { registerSimulationTools } from './simulation-tools.js'
+import { registerTransferTools } from './transfer-tools.js'
+import { registerRevokeTools } from './revoke-tools.js'
 import type { MakiContext } from './context.js'
 
 export default function makiExtension(pi: ExtensionAPI) {
@@ -63,4 +65,6 @@ export default function makiExtension(pi: ExtensionAPI) {
   registerDoctorTool(pi, getCtx)
   registerAccountTools(pi, getCtx)
   registerSimulationTools(pi, getCtx)
+  registerTransferTools(pi, getCtx)
+  registerRevokeTools(pi, getCtx)
 }
