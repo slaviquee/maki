@@ -7,6 +7,8 @@ import type {
   PingResult,
   StatusResult,
   GetPublicKeyResult,
+  GetPublicKeyCoordinatesResult,
+  CreateKeyResult,
   SignHashParams,
   SignHashResult,
   ApproveActionParams,
@@ -112,6 +114,14 @@ export function createSignerIpcClient(socketPath: string): SignerClient {
 
     getPublicKey() {
       return send<GetPublicKeyResult>('get_public_key', {})
+    },
+
+    getPublicKeyCoordinates() {
+      return send<GetPublicKeyCoordinatesResult>('get_public_key_coordinates', {})
+    },
+
+    createKey() {
+      return send<CreateKeyResult>('create_key', {})
     },
 
     signHash(params: SignHashParams) {

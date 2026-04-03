@@ -2,11 +2,12 @@ import Foundation
 
 class SocketServer {
     private let socketPath: String
-    private let handler = MessageHandler()
+    private let handler: MessageHandler
     private var serverSocket: Int32 = -1
 
-    init(socketPath: String) {
+    init(socketPath: String, handler: MessageHandler) {
         self.socketPath = socketPath
+        self.handler = handler
     }
 
     func start() throws {

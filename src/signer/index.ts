@@ -8,6 +8,8 @@ export type {
   PingResult,
   StatusResult,
   GetPublicKeyResult,
+  GetPublicKeyCoordinatesResult,
+  CreateKeyResult,
   SignHashParams,
   SignHashResult,
   ApproveActionParams,

@@ -11,6 +11,8 @@ import { registerEnsTools } from './ens-tools.js'
 import { registerAllowanceTools } from './allowance-tools.js'
 import { registerSignerTools } from './signer-tools.js'
 import { registerDoctorTool } from './doctor-tool.js'
+import { registerAccountTools } from './account-tools.js'
+import { registerSimulationTools } from './simulation-tools.js'
 import type { MakiContext } from './context.js'
 
 export default function makiExtension(pi: ExtensionAPI) {
@@ -59,4 +61,6 @@ export default function makiExtension(pi: ExtensionAPI) {
   registerAllowanceTools(pi, getCtx)
   registerSignerTools(pi, getCtx)
   registerDoctorTool(pi, getCtx)
+  registerAccountTools(pi, getCtx)
+  registerSimulationTools(pi, getCtx)
 }

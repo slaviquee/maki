@@ -14,7 +14,15 @@ export interface IpcResponse {
   error?: { code: string; message: string }
 }
 
-export type SignerMethod = 'ping' | 'status' | 'get_public_key' | 'sign_hash' | 'sign_user_op' | 'approve_action'
+export type SignerMethod =
+  | 'ping'
+  | 'status'
+  | 'get_public_key'
+  | 'get_public_key_coordinates'
+  | 'create_key'
+  | 'sign_hash'
+  | 'sign_user_op'
+  | 'approve_action'
 
 // Method params and results
 export interface PingResult {
@@ -56,6 +64,18 @@ export interface ApproveActionResult {
   reason?: string
 }
 
+export interface GetPublicKeyCoordinatesResult {
+  x: `0x${string}`
+  y: `0x${string}`
+}
+
+export interface CreateKeyResult {
+  publicKey: string
+  x: `0x${string}`
+  y: `0x${string}`
+  created: boolean
+}
+
 // Client interface
 export interface SignerClient {
   connect(): Promise<void>
@@ -63,6 +83,8 @@ export interface SignerClient {
   ping(): Promise<PingResult>
   status(): Promise<StatusResult>
   getPublicKey(): Promise<GetPublicKeyResult>
+  getPublicKeyCoordinates(): Promise<GetPublicKeyCoordinatesResult>
+  createKey(): Promise<CreateKeyResult>
   signHash(params: SignHashParams): Promise<SignHashResult>
   approveAction(params: ApproveActionParams): Promise<ApproveActionResult>
 }
