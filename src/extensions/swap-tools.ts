@@ -4,7 +4,7 @@ import { formatUnits } from 'viem'
 import { getSwapQuote, buildSwapCalls } from '../adapters/uniswap/index.js'
 import { findToken } from '../wallet-core/tokens.js'
 import { executeWriteAction } from '../wallet-core/execute.js'
-import { estimateUsdValue } from '../wallet-core/price-estimate.js'
+import { getUsdcSpendingCapAmount } from '../wallet-core/spending-cap.js'
 import { submitApproved } from './submit-helper.js'
 import type { MakiContext } from './context.js'
 
@@ -106,13 +106,7 @@ export function registerSwapTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
 
       const description = `Swap ${quote.amountIn} ${tokenIn.symbol} for ~${quote.amountOut} ${tokenOut.symbol} (max slippage: ${slippageBps / 100}%)`
 
-      const amountUsd = await estimateUsdValue(
-        maki.chainClient,
-        maki.config.chainId,
-        tokenIn.symbol,
-        tokenIn.address,
-        params.amountIn,
-      )
+      const amountUsdc = getUsdcSpendingCapAmount(tokenIn.symbol, params.amountIn)
 
       let result = await executeWriteAction(
         {
@@ -125,7 +119,7 @@ export function registerSwapTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
             type: 'swap',
             protocol: 'uniswap',
             token: tokenIn.symbol,
-            amountUsd,
+            amountUsdc,
             slippageBps,
           },
         },

@@ -13,10 +13,10 @@ export interface ApprovalConfig {
 }
 
 export interface SpendingLimits {
-  transfer_per_tx_usd: number
-  transfer_daily_usd: number
-  swap_per_tx_usd: number
-  swap_daily_usd: number
+  transfer_per_tx_usdc: number
+  transfer_daily_usdc: number
+  swap_per_tx_usdc: number
+  swap_daily_usdc: number
   max_slippage_bps: number
   max_gas_usd: number
 }
@@ -66,7 +66,7 @@ export interface ActionDetails {
   recipient?: string
   protocol?: string
   token?: string
-  amountUsd?: number
+  amountUsdc?: number
   slippageBps?: number
 }
 

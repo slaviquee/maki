@@ -27,21 +27,21 @@ describe('checkAction', () => {
   })
 
   it('requires touch_id for class 1 transfer on locked profile', () => {
-    const details: ActionDetails = { type: 'transfer', token: 'ETH', amountUsd: 10 }
+    const details: ActionDetails = { type: 'transfer', token: 'USDC', amountUsdc: 10 }
     const result = checkAction(locked, 1, details)
     expect(result.allowed).toBe(true)
     if (result.allowed) expect(result.approvalMode).toBe('touch_id')
   })
 
   it('denies transfer exceeding per-tx limit', () => {
-    const details: ActionDetails = { type: 'transfer', token: 'ETH', amountUsd: 200 }
+    const details: ActionDetails = { type: 'transfer', token: 'USDC', amountUsdc: 200 }
     const result = checkAction(locked, 1, details)
     expect(result.allowed).toBe(false)
     if (!result.allowed) expect(result.reason).toContain('per-tx limit')
   })
 
   it('denies transfer exceeding daily limit', () => {
-    const details: ActionDetails = { type: 'transfer', token: 'ETH', amountUsd: 50 }
+    const details: ActionDetails = { type: 'transfer', token: 'USDC', amountUsdc: 50 }
     const spending = mockSpending(280) // $280 already spent, $50 more = $330 > $300 limit
     const result = checkAction(locked, 1, details, spending)
     expect(result.allowed).toBe(false)
@@ -49,21 +49,21 @@ describe('checkAction', () => {
   })
 
   it('allows transfer within daily limit', () => {
-    const details: ActionDetails = { type: 'transfer', token: 'ETH', amountUsd: 50 }
+    const details: ActionDetails = { type: 'transfer', token: 'USDC', amountUsdc: 50 }
     const spending = mockSpending(200)
     const result = checkAction(locked, 1, details, spending)
     expect(result.allowed).toBe(true)
   })
 
   it('denies swap exceeding per-tx limit', () => {
-    const details: ActionDetails = { type: 'swap', protocol: 'uniswap', token: 'ETH', amountUsd: 300 }
+    const details: ActionDetails = { type: 'swap', protocol: 'uniswap', token: 'USDC', amountUsdc: 300 }
     const result = checkAction(locked, 2, details)
     expect(result.allowed).toBe(false)
     if (!result.allowed) expect(result.reason).toContain('per-tx limit')
   })
 
   it('denies swap exceeding daily limit', () => {
-    const details: ActionDetails = { type: 'swap', protocol: 'uniswap', token: 'ETH', amountUsd: 100 }
+    const details: ActionDetails = { type: 'swap', protocol: 'uniswap', token: 'USDC', amountUsdc: 100 }
     const spending = mockSpending(0, 450)
     const result = checkAction(locked, 2, details, spending)
     expect(result.allowed).toBe(false)
@@ -71,14 +71,20 @@ describe('checkAction', () => {
   })
 
   it('denies slippage exceeding max', () => {
-    const details: ActionDetails = { type: 'swap', protocol: 'uniswap', token: 'ETH', amountUsd: 10, slippageBps: 100 }
+    const details: ActionDetails = {
+      type: 'swap',
+      protocol: 'uniswap',
+      token: 'USDC',
+      amountUsdc: 10,
+      slippageBps: 100,
+    }
     const result = checkAction(locked, 2, details)
     expect(result.allowed).toBe(false)
     if (!result.allowed) expect(result.reason).toContain('Slippage')
   })
 
   it('allows slippage within max', () => {
-    const details: ActionDetails = { type: 'swap', protocol: 'uniswap', token: 'ETH', amountUsd: 10, slippageBps: 30 }
+    const details: ActionDetails = { type: 'swap', protocol: 'uniswap', token: 'USDC', amountUsdc: 10, slippageBps: 30 }
     const result = checkAction(locked, 2, details)
     expect(result.allowed).toBe(true)
   })
@@ -91,7 +97,7 @@ describe('checkAction', () => {
   })
 
   it('allows token in allowlist', () => {
-    const details: ActionDetails = { type: 'transfer', token: 'ETH', amountUsd: 10 }
+    const details: ActionDetails = { type: 'transfer', token: 'USDC', amountUsdc: 10 }
     const result = checkAction(locked, 1, details)
     expect(result.allowed).toBe(true)
   })
@@ -105,7 +111,7 @@ describe('checkAction', () => {
 
   it('auto-allows low_risk on relaxed profile', () => {
     const relaxed = defaultPolicy('relaxed')
-    const details: ActionDetails = { type: 'transfer', token: 'ETH', amountUsd: 10 }
+    const details: ActionDetails = { type: 'transfer', token: 'USDC', amountUsdc: 10 }
     const result = checkAction(relaxed, 1, details)
     expect(result.allowed).toBe(true)
     if (result.allowed) expect(result.approvalMode).toBe('auto')

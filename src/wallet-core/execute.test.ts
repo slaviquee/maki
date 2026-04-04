@@ -59,16 +59,16 @@ function createMockAuditLog(): AuditLog {
 function createAction(overrides: Partial<WriteAction> = {}): WriteAction {
   return {
     plan: {
-      calls: [{ to: MOCK_TO, value: 1000000000000000n }],
-      description: 'Send 0.001 ETH',
+      calls: [{ to: MOCK_TO }],
+      description: 'Transfer 2 USDC',
       actionClass: 1,
       ...overrides.plan,
     },
     policyDetails: {
       type: 'transfer',
       recipient: MOCK_TO,
-      token: 'ETH',
-      amountUsd: 2,
+      token: 'USDC',
+      amountUsdc: 2,
       ...overrides.policyDetails,
     },
   }
@@ -87,13 +87,13 @@ describe('renderActionSummary', () => {
     const action = createAction()
     const summary = renderActionSummary(action)
     expect(summary).toContain(`Recipient: ${MOCK_TO}`)
-    expect(summary).toContain('Token: ETH')
+    expect(summary).toContain('Token: USDC')
   })
 
-  it('includes USD estimate', () => {
+  it('includes USDC spending-cap amount', () => {
     const action = createAction()
     const summary = renderActionSummary(action)
-    expect(summary).toContain('Est. value: ~$2.00')
+    expect(summary).toContain('Spend cap amount: 2.00 USDC')
   })
 })
 
@@ -139,7 +139,7 @@ describe('executeWriteAction', () => {
 
   it('denies when policy blocks', async () => {
     const action = createAction({
-      policyDetails: { type: 'transfer', token: 'ETH', amountUsd: 200 }, // exceeds $100 per-tx
+      policyDetails: { type: 'transfer', token: 'USDC', amountUsdc: 200 }, // exceeds 100 USDC per-tx
     })
     const result = await executeWriteAction(action, client, signer, policy, MOCK_FROM, spending, auditLog)
     expect(result.status).toBe('denied')

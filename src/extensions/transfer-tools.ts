@@ -4,7 +4,7 @@ import { buildErc20Transfer, buildNativeTransfer } from '../adapters/erc20/index
 import { findToken } from '../wallet-core/tokens.js'
 import { resolveEns } from '../wallet-core/ens.js'
 import { executeWriteAction } from '../wallet-core/execute.js'
-import { estimateUsdValue } from '../wallet-core/price-estimate.js'
+import { getUsdcSpendingCapAmount } from '../wallet-core/spending-cap.js'
 import { submitApproved } from './submit-helper.js'
 
 import type { MakiContext } from './context.js'
@@ -38,7 +38,7 @@ export function registerTransferTools(pi: ExtensionAPI, getCtx: () => MakiContex
       }
 
       const call = buildNativeTransfer(to, params.amount)
-      const amountUsd = await estimateUsdValue(maki.chainClient, maki.config.chainId, 'ETH', undefined, params.amount)
+      const amountUsdc = getUsdcSpendingCapAmount('ETH', params.amount)
 
       let result = await executeWriteAction(
         {
@@ -51,7 +51,7 @@ export function registerTransferTools(pi: ExtensionAPI, getCtx: () => MakiContex
             type: 'transfer',
             recipient: to,
             token: 'ETH',
-            amountUsd,
+            amountUsdc,
           },
         },
         maki.chainClient,
@@ -131,13 +131,7 @@ export function registerTransferTools(pi: ExtensionAPI, getCtx: () => MakiContex
       }
 
       const call = buildErc20Transfer({ token: tokenInfo, to, amount: params.amount })
-      const amountUsd = await estimateUsdValue(
-        maki.chainClient,
-        maki.config.chainId,
-        tokenInfo.symbol,
-        tokenInfo.address,
-        params.amount,
-      )
+      const amountUsdc = getUsdcSpendingCapAmount(tokenInfo.symbol, params.amount)
 
       let result = await executeWriteAction(
         {
@@ -150,7 +144,7 @@ export function registerTransferTools(pi: ExtensionAPI, getCtx: () => MakiContex
             type: 'transfer',
             recipient: to,
             token: tokenInfo.symbol,
-            amountUsd,
+            amountUsdc,
           },
         },
         maki.chainClient,

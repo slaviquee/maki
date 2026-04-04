@@ -60,38 +60,38 @@ export function checkAction(
   }
 
   // Check per-transaction spending limits
-  if (details.amountUsd !== undefined) {
-    if (details.type === 'transfer' && details.amountUsd > policy.limits.transfer_per_tx_usd) {
+  if (details.amountUsdc !== undefined) {
+    if (details.type === 'transfer' && details.amountUsdc > policy.limits.transfer_per_tx_usdc) {
       return {
         allowed: false,
-        reason: `Transfer $${details.amountUsd.toFixed(2)} exceeds per-tx limit of $${policy.limits.transfer_per_tx_usd}`,
+        reason: `Transfer ${details.amountUsdc.toFixed(2)} USDC exceeds per-tx limit of ${policy.limits.transfer_per_tx_usdc} USDC`,
       }
     }
-    if (details.type === 'swap' && details.amountUsd > policy.limits.swap_per_tx_usd) {
+    if (details.type === 'swap' && details.amountUsdc > policy.limits.swap_per_tx_usdc) {
       return {
         allowed: false,
-        reason: `Swap $${details.amountUsd.toFixed(2)} exceeds per-tx limit of $${policy.limits.swap_per_tx_usd}`,
+        reason: `Swap ${details.amountUsdc.toFixed(2)} USDC exceeds per-tx limit of ${policy.limits.swap_per_tx_usdc} USDC`,
       }
     }
   }
 
   // Check daily spending limits
-  if (spending && details.amountUsd !== undefined) {
+  if (spending && details.amountUsdc !== undefined) {
     if (details.type === 'transfer') {
       const dailyTotal = spending.getDailyTotal('transfer')
-      if (dailyTotal + details.amountUsd > policy.limits.transfer_daily_usd) {
+      if (dailyTotal + details.amountUsdc > policy.limits.transfer_daily_usdc) {
         return {
           allowed: false,
-          reason: `Daily transfer limit exceeded: $${dailyTotal.toFixed(2)} spent + $${details.amountUsd.toFixed(2)} > $${policy.limits.transfer_daily_usd} limit`,
+          reason: `Daily transfer limit exceeded: ${dailyTotal.toFixed(2)} USDC spent + ${details.amountUsdc.toFixed(2)} USDC > ${policy.limits.transfer_daily_usdc} USDC limit`,
         }
       }
     }
     if (details.type === 'swap') {
       const dailyTotal = spending.getDailyTotal('swap')
-      if (dailyTotal + details.amountUsd > policy.limits.swap_daily_usd) {
+      if (dailyTotal + details.amountUsdc > policy.limits.swap_daily_usdc) {
         return {
           allowed: false,
-          reason: `Daily swap limit exceeded: $${dailyTotal.toFixed(2)} spent + $${details.amountUsd.toFixed(2)} > $${policy.limits.swap_daily_usd} limit`,
+          reason: `Daily swap limit exceeded: ${dailyTotal.toFixed(2)} USDC spent + ${details.amountUsdc.toFixed(2)} USDC > ${policy.limits.swap_daily_usdc} USDC limit`,
         }
       }
     }

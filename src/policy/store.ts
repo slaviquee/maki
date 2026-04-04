@@ -22,10 +22,10 @@ const PolicySchema = z.object({
     timeout_seconds: z.number().positive(),
   }),
   limits: z.object({
-    transfer_per_tx_usd: z.number().nonnegative(),
-    transfer_daily_usd: z.number().nonnegative(),
-    swap_per_tx_usd: z.number().nonnegative(),
-    swap_daily_usd: z.number().nonnegative(),
+    transfer_per_tx_usdc: z.number().nonnegative(),
+    transfer_daily_usdc: z.number().nonnegative(),
+    swap_per_tx_usdc: z.number().nonnegative(),
+    swap_daily_usdc: z.number().nonnegative(),
     max_slippage_bps: z.number().nonnegative(),
     max_gas_usd: z.number().nonnegative(),
   }),
@@ -55,11 +55,46 @@ export interface PolicyStore {
   save(policy: Policy): void
 }
 
+function normalizeLegacyPolicy(raw: unknown): unknown {
+  if (!raw || typeof raw !== 'object') {
+    return raw
+  }
+
+  const policy = { ...(raw as Record<string, unknown>) }
+  const limits = policy['limits']
+  if (!limits || typeof limits !== 'object') {
+    return policy
+  }
+
+  const normalizedLimits = { ...(limits as Record<string, unknown>) }
+
+  if (normalizedLimits['transfer_per_tx_usdc'] === undefined && normalizedLimits['transfer_per_tx_usd'] !== undefined) {
+    normalizedLimits['transfer_per_tx_usdc'] = normalizedLimits['transfer_per_tx_usd']
+  }
+  if (normalizedLimits['transfer_daily_usdc'] === undefined && normalizedLimits['transfer_daily_usd'] !== undefined) {
+    normalizedLimits['transfer_daily_usdc'] = normalizedLimits['transfer_daily_usd']
+  }
+  if (normalizedLimits['swap_per_tx_usdc'] === undefined && normalizedLimits['swap_per_tx_usd'] !== undefined) {
+    normalizedLimits['swap_per_tx_usdc'] = normalizedLimits['swap_per_tx_usd']
+  }
+  if (normalizedLimits['swap_daily_usdc'] === undefined && normalizedLimits['swap_daily_usd'] !== undefined) {
+    normalizedLimits['swap_daily_usdc'] = normalizedLimits['swap_daily_usd']
+  }
+
+  delete normalizedLimits['transfer_per_tx_usd']
+  delete normalizedLimits['transfer_daily_usd']
+  delete normalizedLimits['swap_per_tx_usd']
+  delete normalizedLimits['swap_daily_usd']
+
+  policy['limits'] = normalizedLimits
+  return policy
+}
+
 export function createPolicyStore(policyPath: string): PolicyStore {
   return {
     load(): Policy {
       try {
-        const raw = yamlParse(readFileSync(policyPath, 'utf-8'))
+        const raw = normalizeLegacyPolicy(yamlParse(readFileSync(policyPath, 'utf-8')))
         const result = PolicySchema.safeParse(raw)
         if (result.success) {
           return result.data as Policy

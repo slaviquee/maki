@@ -2,12 +2,12 @@ import Database from 'better-sqlite3'
 
 export interface SpendingRecord {
   type: 'transfer' | 'swap'
-  amountUsd: number
+  amountUsdc: number
   timestamp: number
 }
 
 export interface SpendingTracker {
-  record(type: 'transfer' | 'swap', amountUsd: number): void
+  record(type: 'transfer' | 'swap', amountUsdc: number): void
   getDailyTotal(type: 'transfer' | 'swap'): number
   getDailyTotalAll(): { transfer: number; swap: number }
 }
@@ -20,14 +20,22 @@ export function createSpendingTracker(dbPath: string): SpendingTracker {
     CREATE TABLE IF NOT EXISTS spending (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       type TEXT NOT NULL,
-      amount_usd REAL NOT NULL,
+      amount_usdc REAL NOT NULL,
       timestamp INTEGER NOT NULL
     )
   `)
 
-  const insertStmt = db.prepare('INSERT INTO spending (type, amount_usd, timestamp) VALUES (?, ?, ?)')
+  const columns = db.prepare('PRAGMA table_info(spending)').all() as Array<{ name: string }>
+  const hasLegacyAmountColumn = columns.some((column) => column.name === 'amount_usd')
+  const hasUsdcAmountColumn = columns.some((column) => column.name === 'amount_usdc')
+
+  if (hasLegacyAmountColumn && !hasUsdcAmountColumn) {
+    db.exec('ALTER TABLE spending RENAME COLUMN amount_usd TO amount_usdc')
+  }
+
+  const insertStmt = db.prepare('INSERT INTO spending (type, amount_usdc, timestamp) VALUES (?, ?, ?)')
   const dailyTotalStmt = db.prepare(
-    'SELECT COALESCE(SUM(amount_usd), 0) as total FROM spending WHERE type = ? AND timestamp > ?',
+    'SELECT COALESCE(SUM(amount_usdc), 0) as total FROM spending WHERE type = ? AND timestamp > ?',
   )
 
   function startOfDay(): number {
@@ -37,8 +45,8 @@ export function createSpendingTracker(dbPath: string): SpendingTracker {
   }
 
   return {
-    record(type, amountUsd) {
-      insertStmt.run(type, amountUsd, Date.now())
+    record(type, amountUsdc) {
+      insertStmt.run(type, amountUsdc, Date.now())
     },
 
     getDailyTotal(type) {

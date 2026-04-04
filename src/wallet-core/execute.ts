@@ -41,8 +41,8 @@ export function renderActionSummary(action: WriteAction): string {
   if (policyDetails.token) {
     lines.push(`Token: ${policyDetails.token}`)
   }
-  if (policyDetails.amountUsd !== undefined) {
-    lines.push(`Est. value: ~$${policyDetails.amountUsd.toFixed(2)}`)
+  if (policyDetails.amountUsdc !== undefined) {
+    lines.push(`Spend cap amount: ${policyDetails.amountUsdc.toFixed(2)} USDC`)
   }
 
   lines.push(`Risk class: ${plan.actionClass}`)
@@ -139,9 +139,9 @@ export async function executeWriteAction(
   // unsubmitted actions bypass daily caps. Over-counting is safer than under-
   // counting. When the submission/receipt pipeline is added, this should move
   // to post-confirmation and failed submissions should refund the allowance.
-  if (spending && policyDetails.amountUsd !== undefined) {
+  if (spending && policyDetails.amountUsdc !== undefined) {
     const spendType = policyDetails.type === 'swap' ? 'swap' : 'transfer'
-    spending.record(spendType, policyDetails.amountUsd)
+    spending.record(spendType, policyDetails.amountUsdc)
   }
 
   auditLog?.log('write_approved', summary, policyDetails as unknown as Record<string, unknown>)
