@@ -5,6 +5,7 @@ import { findToken } from '../wallet-core/tokens.js'
 import { resolveEns } from '../wallet-core/ens.js'
 import { executeWriteAction } from '../wallet-core/execute.js'
 import { estimateUsdValue } from '../wallet-core/price-estimate.js'
+import { submitApproved } from './submit-helper.js'
 
 import type { MakiContext } from './context.js'
 
@@ -27,7 +28,7 @@ export function registerTransferTools(pi: ExtensionAPI, getCtx: () => MakiContex
     async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
       const maki = getCtx()
       const from = maki.config.smartAccountAddress
-      if (!from) throw new Error('No smart account configured.')
+      if (!from) throw new Error('No smart account configured. Run create_smart_account first.')
 
       let to = params.to as `0x${string}`
       if (params.to.endsWith('.eth')) {
@@ -39,7 +40,7 @@ export function registerTransferTools(pi: ExtensionAPI, getCtx: () => MakiContex
       const call = buildNativeTransfer(to, params.amount)
       const amountUsd = await estimateUsdValue(maki.chainClient, maki.config.chainId, 'ETH', undefined, params.amount)
 
-      const result = await executeWriteAction(
+      let result = await executeWriteAction(
         {
           plan: {
             calls: [call],
@@ -61,15 +62,36 @@ export function registerTransferTools(pi: ExtensionAPI, getCtx: () => MakiContex
         maki.auditLog,
       )
 
-      if (result.status !== 'approved') {
+      if (result.status === 'approved') {
+        result = await submitApproved(maki, [call], result)
+      }
+
+      if (result.status === 'confirmed') {
         return {
-          content: [{ type: 'text' as const, text: `Transfer blocked: ${result.error}\n\n${result.summary}` }],
+          content: [
+            {
+              type: 'text' as const,
+              text: `Transfer confirmed on-chain.\nTx: ${result.txHash}\nUserOp: ${result.userOpHash}\n\n${result.summary}`,
+            },
+          ],
+          details: result,
+        }
+      }
+
+      if (result.status === 'approved') {
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: `Transfer approved.\n${result.error ?? ''}\n\n${result.summary}`.trim(),
+            },
+          ],
           details: result,
         }
       }
 
       return {
-        content: [{ type: 'text' as const, text: `Transfer approved and ready to submit.\n\n${result.summary}` }],
+        content: [{ type: 'text' as const, text: `Transfer blocked: ${result.error}\n\n${result.summary}` }],
         details: result,
       }
     },
@@ -94,7 +116,7 @@ export function registerTransferTools(pi: ExtensionAPI, getCtx: () => MakiContex
     async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
       const maki = getCtx()
       const from = maki.config.smartAccountAddress
-      if (!from) throw new Error('No smart account configured.')
+      if (!from) throw new Error('No smart account configured. Run create_smart_account first.')
 
       const tokenInfo = findToken(maki.config.chainId, params.token)
       if (!tokenInfo) {
@@ -117,7 +139,7 @@ export function registerTransferTools(pi: ExtensionAPI, getCtx: () => MakiContex
         params.amount,
       )
 
-      const result = await executeWriteAction(
+      let result = await executeWriteAction(
         {
           plan: {
             calls: [call],
@@ -139,15 +161,36 @@ export function registerTransferTools(pi: ExtensionAPI, getCtx: () => MakiContex
         maki.auditLog,
       )
 
-      if (result.status !== 'approved') {
+      if (result.status === 'approved') {
+        result = await submitApproved(maki, [call], result)
+      }
+
+      if (result.status === 'confirmed') {
         return {
-          content: [{ type: 'text' as const, text: `Transfer blocked: ${result.error}\n\n${result.summary}` }],
+          content: [
+            {
+              type: 'text' as const,
+              text: `Transfer confirmed on-chain.\nTx: ${result.txHash}\nUserOp: ${result.userOpHash}\n\n${result.summary}`,
+            },
+          ],
+          details: result,
+        }
+      }
+
+      if (result.status === 'approved') {
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: `Transfer approved.\n${result.error ?? ''}\n\n${result.summary}`.trim(),
+            },
+          ],
           details: result,
         }
       }
 
       return {
-        content: [{ type: 'text' as const, text: `Transfer approved and ready to submit.\n\n${result.summary}` }],
+        content: [{ type: 'text' as const, text: `Transfer blocked: ${result.error}\n\n${result.summary}` }],
         details: result,
       }
     },

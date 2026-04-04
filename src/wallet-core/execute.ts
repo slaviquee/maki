@@ -1,4 +1,4 @@
-import { formatEther, type PublicClient, keccak256, toBytes } from 'viem'
+import { formatEther, type PublicClient, type Hex, keccak256, toBytes } from 'viem'
 import type { SignerClient } from '../signer/types.js'
 import type { PolicyStore } from '../policy/store.js'
 import type { SpendingTracker } from '../policy/spending-tracker.js'
@@ -14,9 +14,11 @@ export interface WriteAction {
 }
 
 export interface WriteResult {
-  status: 'approved' | 'denied' | 'simulation_failed' | 'rejected' | 'error'
+  status: 'approved' | 'submitted' | 'confirmed' | 'denied' | 'simulation_failed' | 'rejected' | 'error'
   summary: string
   error?: string
+  userOpHash?: Hex
+  txHash?: Hex
 }
 
 /**

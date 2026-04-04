@@ -40,5 +40,16 @@ export function bootstrap(): MakiConfig {
     dbPath: paths.db,
     signerType: (raw['signerType'] as MakiConfig['signerType']) ?? 'none',
     smartAccountAddress: raw['smartAccountAddress'] as `0x${string}` | undefined,
+    bundlerApiKey: (raw['bundlerApiKey'] as string) ?? undefined,
   }
+}
+
+/**
+ * Persists a single config field to ~/.maki/config.yaml.
+ * Reads the current file, merges the field, writes back.
+ */
+export function saveConfigField(key: string, value: unknown): void {
+  const raw = yamlParse(readFileSync(paths.config, 'utf-8')) as Record<string, unknown>
+  raw[key] = value
+  writeFileSync(paths.config, yamlStringify(raw), 'utf-8')
 }

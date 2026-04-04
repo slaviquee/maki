@@ -9,4 +9,5 @@ export interface MakiConfig {
   dbPath: string
   signerType: 'secure-enclave' | 'mock' | 'none'
   smartAccountAddress?: `0x${string}`
+  bundlerApiKey?: string
 }

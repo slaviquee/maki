@@ -49,7 +49,9 @@ export default function makiExtension(pi: ExtensionAPI) {
       signer = createSignerIpcClient(config.socketPath)
       try {
         await signer.connect()
-        signerMode = 'ipc'
+        // Query the daemon to determine whether it uses Secure Enclave or mock backend
+        const status = await signer.status()
+        signerMode = status.signerType === 'secure-enclave' ? 'secure-enclave' : 'ipc'
       } catch (err) {
         // Surface the failure clearly — do NOT silently fallback
         signer = createMockSigner()
@@ -68,8 +70,15 @@ export default function makiExtension(pi: ExtensionAPI) {
     ctx = { config, signer, signerMode, policy, chainClient, spending, auditLog }
 
     if (extCtx.hasUI) {
-      const modeLabel = signerMode === 'mock-fallback' ? 'MOCK (daemon unavailable)' : chainName(config.chainId)
-      extCtx.ui.setStatus('maki', `maki | ${modeLabel}`)
+      const signerLabel =
+        signerMode === 'secure-enclave'
+          ? 'Secure Enclave'
+          : signerMode === 'mock-fallback'
+            ? 'MOCK (daemon unavailable)'
+            : signerMode === 'mock'
+              ? 'MOCK'
+              : 'IPC'
+      extCtx.ui.setStatus('maki', `maki | ${chainName(config.chainId)} | ${signerLabel}`)
     }
   })
 

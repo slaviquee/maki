@@ -5,6 +5,7 @@ import { getSwapQuote, buildSwapCalls } from '../adapters/uniswap/index.js'
 import { findToken } from '../wallet-core/tokens.js'
 import { executeWriteAction } from '../wallet-core/execute.js'
 import { estimateUsdValue } from '../wallet-core/price-estimate.js'
+import { submitApproved } from './submit-helper.js'
 import type { MakiContext } from './context.js'
 
 export function registerSwapTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
@@ -69,7 +70,7 @@ export function registerSwapTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
       'Always use quote_swap first to show the user the expected output.',
       'The user should confirm the quote before executing.',
       'Default slippage is 50bps (0.5%). The user can specify a different value.',
-      'This goes through the full write pipeline: policy → simulate → approve.',
+      'This goes through the full write pipeline: policy → simulate → approve → submit.',
     ],
     parameters: Type.Object({
       tokenIn: Type.String({ description: 'Input token symbol (e.g. "ETH", "USDC")' }),
@@ -91,14 +92,12 @@ export function registerSwapTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
 
       const slippageBps = params.slippageBps ?? 50
 
-      // Get quote
       const quote = await getSwapQuote(maki.chainClient, maki.config.chainId, {
         tokenIn,
         tokenOut,
         amountIn: params.amountIn,
       })
 
-      // Build calls
       const calls = buildSwapCalls(maki.config.chainId, {
         quote,
         recipient: from,
@@ -115,8 +114,7 @@ export function registerSwapTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
         params.amountIn,
       )
 
-      // Execute through write pipeline
-      const result = await executeWriteAction(
+      let result = await executeWriteAction(
         {
           plan: {
             calls,
@@ -139,28 +137,51 @@ export function registerSwapTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
         maki.auditLog,
       )
 
-      if (result.status !== 'approved') {
+      if (result.status === 'approved') {
+        result = await submitApproved(maki, calls, result)
+      }
+
+      if (result.status === 'confirmed') {
         return {
-          content: [{ type: 'text' as const, text: `Swap blocked: ${result.error}\n\n${result.summary}` }],
+          content: [
+            {
+              type: 'text' as const,
+              text: [
+                `Swap confirmed on-chain.`,
+                `  ${quote.amountIn} ${tokenIn.symbol} → ~${quote.amountOut} ${tokenOut.symbol}`,
+                `  Min output: ${formatUnits(quote.amountOutRaw - (quote.amountOutRaw * BigInt(slippageBps)) / 10000n, tokenOut.decimals)} ${tokenOut.symbol}`,
+                `  Tx: ${result.txHash}`,
+                '',
+                result.summary,
+              ].join('\n'),
+            },
+          ],
+          details: result,
+        }
+      }
+
+      if (result.status === 'approved') {
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: [
+                `Swap approved.`,
+                `  ${quote.amountIn} ${tokenIn.symbol} → ~${quote.amountOut} ${tokenOut.symbol}`,
+                result.error ?? '',
+                '',
+                result.summary,
+              ]
+                .filter(Boolean)
+                .join('\n'),
+            },
+          ],
           details: result,
         }
       }
 
       return {
-        content: [
-          {
-            type: 'text' as const,
-            text: [
-              `Swap approved:`,
-              `  ${quote.amountIn} ${tokenIn.symbol} → ~${quote.amountOut} ${tokenOut.symbol}`,
-              `  Min output: ${formatUnits(quote.amountOutRaw - (quote.amountOutRaw * BigInt(slippageBps)) / 10000n, tokenOut.decimals)} ${tokenOut.symbol}`,
-              ``,
-              result.summary,
-              ``,
-              `Note: On-chain submission requires bundler API key (Stage 5).`,
-            ].join('\n'),
-          },
-        ],
+        content: [{ type: 'text' as const, text: `Swap blocked: ${result.error}\n\n${result.summary}` }],
         details: result,
       }
     },

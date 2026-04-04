@@ -2,6 +2,7 @@ import type { ExtensionAPI } from '@mariozechner/pi-coding-agent'
 import { Type } from '@sinclair/typebox'
 import { getSmartAccountInfo } from '../wallet-core/account.js'
 import { chainName } from '../wallet-core/chains.js'
+import { saveConfigField } from '../config/bootstrap.js'
 import type { MakiContext } from './context.js'
 
 export function registerAccountTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
@@ -27,12 +28,18 @@ export function registerAccountTools(pi: ExtensionAPI, getCtx: () => MakiContext
       // Get account info
       const info = await getSmartAccountInfo(maki.chainClient, maki.signer)
 
+      // Persist the counterfactual address so it's reused across sessions
+      saveConfigField('smartAccountAddress', info.address)
+      maki.config.smartAccountAddress = info.address
+
       const lines = [
         `Smart Account created on ${chainName(maki.config.chainId)}`,
         `Address: ${info.address}`,
         `Deployed: ${info.isDeployed ? 'yes' : 'no (will deploy on first transaction)'}`,
         `Owner public key (P-256): ${info.ownerPublicKey.slice(0, 20)}...`,
+        `Signer mode: ${maki.signerMode}`,
         '',
+        'Address saved to ~/.maki/config.yaml.',
         'Fund this address with ETH to start using it.',
       ]
 
@@ -42,6 +49,7 @@ export function registerAccountTools(pi: ExtensionAPI, getCtx: () => MakiContext
           address: info.address,
           isDeployed: info.isDeployed,
           chainId: maki.config.chainId,
+          signerMode: maki.signerMode,
         },
       }
     },

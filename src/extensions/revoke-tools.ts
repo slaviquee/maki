@@ -3,6 +3,7 @@ import { Type } from '@sinclair/typebox'
 import { buildRevokeApproval } from '../adapters/erc20/index.js'
 import { findToken } from '../wallet-core/tokens.js'
 import { executeWriteAction } from '../wallet-core/execute.js'
+import { submitApproved } from './submit-helper.js'
 import type { MakiContext } from './context.js'
 
 export function registerRevokeTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
@@ -34,7 +35,7 @@ export function registerRevokeTools(pi: ExtensionAPI, getCtx: () => MakiContext)
       const spender = params.spender as `0x${string}`
       const call = buildRevokeApproval(tokenInfo, spender)
 
-      const result = await executeWriteAction(
+      let result = await executeWriteAction(
         {
           plan: {
             calls: [call],
@@ -55,20 +56,36 @@ export function registerRevokeTools(pi: ExtensionAPI, getCtx: () => MakiContext)
         maki.auditLog,
       )
 
-      if (result.status !== 'approved') {
+      if (result.status === 'approved') {
+        result = await submitApproved(maki, [call], result)
+      }
+
+      if (result.status === 'confirmed') {
         return {
-          content: [{ type: 'text' as const, text: `Revoke blocked: ${result.error}\n\n${result.summary}` }],
+          content: [
+            {
+              type: 'text' as const,
+              text: `Revoke confirmed on-chain.\nTx: ${result.txHash}\n\n${result.summary}`,
+            },
+          ],
+          details: result,
+        }
+      }
+
+      if (result.status === 'approved') {
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: `Revoke approved.\n${result.error ?? ''}\n\n${result.summary}`.trim(),
+            },
+          ],
           details: result,
         }
       }
 
       return {
-        content: [
-          {
-            type: 'text' as const,
-            text: `Revoke approved and ready to submit.\n\n${result.summary}\n\nNote: Actual on-chain submission requires a bundler API key (Stage 5).`,
-          },
-        ],
+        content: [{ type: 'text' as const, text: `Revoke blocked: ${result.error}\n\n${result.summary}` }],
         details: result,
       }
     },
