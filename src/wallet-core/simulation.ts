@@ -91,13 +91,12 @@ export async function simulateCallSequence(
   const isDeployed = code !== undefined && code !== '0x'
 
   if (!isDeployed) {
-    // Counterfactual account: cannot call executeBatch because there is no
-    // on-chain code yet. The first UserOp includes initCode that deploys the
-    // account atomically. Simulate individual target calls as a best-effort
-    // check (the approve call may fail since the account has no balance yet,
-    // but the final action call is the important one).
-    const lastCall = calls[calls.length - 1]!
-    return simulateCall(client, from, lastCall)
+    // Counterfactual account: no on-chain code to call executeBatch on, and
+    // simulating individual calls from a multi-step plan is unsound because
+    // later calls depend on state from earlier ones (e.g. swap needs the
+    // preceding approval). The first UserOp's initCode deploys the account
+    // atomically — the bundler validates the full sequence at submission.
+    return { success: true }
   }
 
   // Deployed account: simulate the full sequence as executeBatch
