@@ -4,6 +4,7 @@ import { createPimlicoClient } from 'permissionless/clients/pimlico'
 import type { SupportedChainId } from '../config/types.js'
 import type { UserOpCall } from './userop.js'
 import { CHAINS } from './chains.js'
+import { createBaseClient } from './client.js'
 
 const PIMLICO_CHAIN_SLUGS: Record<SupportedChainId, string> = {
   8453: 'base',
@@ -13,6 +14,7 @@ const PIMLICO_CHAIN_SLUGS: Record<SupportedChainId, string> = {
 export interface SubmissionConfig {
   chainId: SupportedChainId
   bundlerApiKey: string
+  rpcUrl?: string
 }
 
 export interface SubmissionResult {
@@ -41,6 +43,7 @@ export async function submitUserOperation(
 
   const bundlerUrl = `https://api.pimlico.io/v2/${slug}/rpc?apikey=${config.bundlerApiKey}`
   const chain = CHAINS[config.chainId] as Chain
+  const client = createBaseClient(config.chainId, config.rpcUrl)
 
   const pimlicoClient = createPimlicoClient({
     transport: http(bundlerUrl),
@@ -53,6 +56,7 @@ export async function submitUserOperation(
 
   const bundlerClient = createBundlerClient({
     account,
+    client,
     chain,
     transport: http(bundlerUrl),
     paymaster: pimlicoClient,

@@ -198,7 +198,16 @@ final class SecureEnclaveSigner {
         let key = try ensureKey()
 
         do {
-            let signature = try key.signature(for: hash)
+            let signature: P256.Signing.ECDSASignature
+            if hash.count == 32 {
+                var digest = SHA256.hash(data: Data())
+                withUnsafeMutableBytes(of: &digest) { digestBytes in
+                    _ = hash.copyBytes(to: digestBytes)
+                }
+                signature = try key.signature(for: digest)
+            } else {
+                signature = try key.signature(for: hash)
+            }
             return signature.rawRepresentation
         } catch {
             let message = error.localizedDescription

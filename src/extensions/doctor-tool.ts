@@ -15,9 +15,10 @@ async function runDoctorChecks(ctx: MakiContext): Promise<DoctorCheck[]> {
   try {
     const ping = await ctx.signer.ping()
     const signerStatus = await ctx.signer.status()
-    const signerMessage = signerStatus.keyStorage === 'ephemeral'
-      ? `Connected (v${ping.version}), session-only Secure Enclave key`
-      : `Connected (v${ping.version})`
+    const signerMessage =
+      signerStatus.keyStorage === 'ephemeral'
+        ? `Connected (v${ping.version}), session-only Secure Enclave key`
+        : `Connected (v${ping.version})`
     checks.push({
       name: 'Signer daemon',
       status: ping.pong ? 'ok' : 'fail',

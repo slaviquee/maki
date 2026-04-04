@@ -38,6 +38,7 @@ export async function submitApproved(
   const submission = await submitUserOperation(account, calls, {
     chainId: maki.config.chainId,
     bundlerApiKey: maki.config.bundlerApiKey,
+    rpcUrl: maki.config.rpcUrl,
   })
 
   if (submission.status === 'confirmed') {

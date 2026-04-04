@@ -3,14 +3,15 @@ import type { SmartAccount } from 'viem/account-abstraction'
 import type { UserOpCall } from './userop.js'
 import type { SubmissionConfig } from './submit.js'
 
+const createBundlerClient = vi.fn(() => ({
+  sendUserOperation,
+  waitForUserOperationReceipt,
+}))
 const sendUserOperation = vi.fn()
 const waitForUserOperationReceipt = vi.fn()
 
 vi.mock('viem/account-abstraction', () => ({
-  createBundlerClient: () => ({
-    sendUserOperation,
-    waitForUserOperationReceipt,
-  }),
+  createBundlerClient,
 }))
 
 vi.mock('permissionless/clients/pimlico', () => ({
@@ -33,6 +34,7 @@ const MOCK_ACCOUNT = {} as SmartAccount
 
 describe('submitUserOperation', () => {
   beforeEach(() => {
+    createBundlerClient.mockClear()
     sendUserOperation.mockReset()
     waitForUserOperationReceipt.mockReset()
   })
@@ -55,6 +57,12 @@ describe('submitUserOperation', () => {
     expect(result.userOpHash).toBe(userOpHash)
     expect(result.txHash).toBe(txHash)
     expect(result.actualGasCost).toBe(100000n)
+    expect(createBundlerClient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        account: MOCK_ACCOUNT,
+        client: expect.any(Object),
+      }),
+    )
   })
 
   it('returns failed with reason on revert', async () => {
