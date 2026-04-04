@@ -47,7 +47,12 @@ export function registerRecurringTools(pi: ExtensionAPI, getCtx: () => MakiConte
 
       if (!policy.automation.enabled) {
         return {
-          content: [{ type: 'text' as const, text: 'Automation is disabled in current policy. Enable it with update_policy or switch to a profile that allows automation.' }],
+          content: [
+            {
+              type: 'text' as const,
+              text: 'Automation is disabled in current policy. Enable it with update_policy or switch to a profile that allows automation.',
+            },
+          ],
           details: { error: 'automation_disabled' },
         }
       }

@@ -17,7 +17,8 @@ export interface WriteResult {
   status: 'approved' | 'denied' | 'simulation_failed' | 'rejected' | 'error'
   summary: string
   error?: string
-  signatureHash?: `0x${string}`
+  /** Populated when approved. Caller must record this after on-chain confirmation. */
+  pendingSpend?: { type: 'transfer' | 'swap'; amountUsd: number }
 }
 
 /**
@@ -92,11 +93,12 @@ export async function executeWriteAction(
     }
   }
 
-  // 2. Simulate — for multi-step plans (e.g. approve+swap), only simulate the
-  // final action call since earlier approve calls depend on sequence ordering
-  const callsToSimulate = plan.calls.length > 1 ? [plan.calls[plan.calls.length - 1]!] : plan.calls
-
-  for (const call of callsToSimulate) {
+  // 2. Simulate — single-call plans are simulated directly via eth_call.
+  // Multi-call plans (e.g. approve+swap) cannot be simulated individually
+  // because later calls depend on state changes from earlier ones. These
+  // rely on the bundler's full UserOp simulation at submission time.
+  if (plan.calls.length === 1) {
+    const call = plan.calls[0]!
     const simResult = await simulateCall(client, from, {
       to: call.to,
       data: call.data,
@@ -104,7 +106,11 @@ export async function executeWriteAction(
     })
 
     if (!simResult.success) {
-      auditLog?.log('simulation_failed', simResult.error ?? 'Unknown', policyDetails as unknown as Record<string, unknown>)
+      auditLog?.log(
+        'simulation_failed',
+        simResult.error ?? 'Unknown',
+        policyDetails as unknown as Record<string, unknown>,
+      )
       return {
         status: 'simulation_failed',
         summary,
@@ -112,6 +118,7 @@ export async function executeWriteAction(
       }
     }
   }
+  // Multi-call plans: simulation deferred to bundler UserOp validation
 
   // 3. Request approval via signHash (real Touch ID, not the no-op approveAction)
   if (policyResult.approvalMode === 'touch_id') {
@@ -134,17 +141,21 @@ export async function executeWriteAction(
     }
   }
 
-  // 4. Record spending
-  if (spending && policyDetails.amountUsd !== undefined) {
-    const spendingType = policyDetails.type === 'swap' ? 'swap' : 'transfer'
-    spending.record(spendingType, policyDetails.amountUsd)
-  }
-
-  // 5. Log approval
+  // 4. Log approval (spending is NOT recorded here — must be recorded after
+  // on-chain confirmation to avoid burning daily budget on unsubmitted actions)
   auditLog?.log('write_approved', summary, policyDetails as unknown as Record<string, unknown>)
+
+  const pendingSpend =
+    policyDetails.amountUsd !== undefined
+      ? {
+          type: (policyDetails.type === 'swap' ? 'swap' : 'transfer') as 'transfer' | 'swap',
+          amountUsd: policyDetails.amountUsd,
+        }
+      : undefined
 
   return {
     status: 'approved',
     summary,
+    pendingSpend,
   }
 }

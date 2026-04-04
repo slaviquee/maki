@@ -31,9 +31,7 @@ export async function getAllowances(
 ): Promise<Allowance[]> {
   if (tokens.length === 0 || spenders.length === 0) return []
 
-  const calls = tokens.flatMap((token) =>
-    spenders.map((spender) => ({ token, spender })),
-  )
+  const calls = tokens.flatMap((token) => spenders.map((spender) => ({ token, spender })))
 
   const results = await Promise.all(
     calls.map((c) =>

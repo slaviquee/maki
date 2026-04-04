@@ -68,7 +68,9 @@ export function registerSimulationTools(pi: ExtensionAPI, getCtx: () => MakiCont
       }
 
       return {
-        content: [{ type: 'text' as const, text: `Gas estimate: ${result.gasEstimate} gas (~${result.gasCostEth} ETH)` }],
+        content: [
+          { type: 'text' as const, text: `Gas estimate: ${result.gasEstimate} gas (~${result.gasCostEth} ETH)` },
+        ],
         details: { gasEstimate: result.gasEstimate.toString(), gasCostEth: result.gasCostEth },
       }
     },

@@ -4,14 +4,14 @@ import { formatUnits } from 'viem'
 import { getSwapQuote, buildSwapCalls } from '../adapters/uniswap/index.js'
 import { findToken } from '../wallet-core/tokens.js'
 import { executeWriteAction } from '../wallet-core/execute.js'
+import { estimateUsdValue } from '../wallet-core/price-estimate.js'
 import type { MakiContext } from './context.js'
 
 export function registerSwapTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
   pi.registerTool({
     name: 'quote_swap',
     label: 'Quote Swap',
-    description:
-      'Get a quote for swapping one token for another on Uniswap. This is read-only — no approval needed.',
+    description: 'Get a quote for swapping one token for another on Uniswap. This is read-only — no approval needed.',
     promptSnippet: 'quote_swap: get a Uniswap swap quote (read-only)',
     promptGuidelines: [
       'Use this before build_swap to show the user what they would get.',
@@ -75,9 +75,7 @@ export function registerSwapTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
       tokenIn: Type.String({ description: 'Input token symbol (e.g. "ETH", "USDC")' }),
       tokenOut: Type.String({ description: 'Output token symbol (e.g. "USDC", "ETH")' }),
       amountIn: Type.String({ description: 'Amount of input token' }),
-      slippageBps: Type.Optional(
-        Type.Number({ description: 'Max slippage in basis points (default: 50 = 0.5%)' }),
-      ),
+      slippageBps: Type.Optional(Type.Number({ description: 'Max slippage in basis points (default: 50 = 0.5%)' })),
     }),
 
     async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
@@ -121,6 +119,7 @@ export function registerSwapTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
             type: 'swap',
             protocol: 'uniswap',
             token: tokenIn.symbol,
+            amountUsd: estimateUsdValue(tokenIn.symbol, params.amountIn),
             slippageBps,
           },
         },

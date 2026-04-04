@@ -40,12 +40,8 @@ export function createAuditLog(dbPath: string): AuditLog {
     )
   `)
 
-  const insertStmt = db.prepare(
-    'INSERT INTO audit_log (timestamp, event_type, summary, details) VALUES (?, ?, ?, ?)',
-  )
-  const recentStmt = db.prepare(
-    'SELECT * FROM audit_log ORDER BY timestamp DESC LIMIT ?',
-  )
+  const insertStmt = db.prepare('INSERT INTO audit_log (timestamp, event_type, summary, details) VALUES (?, ?, ?, ?)')
+  const recentStmt = db.prepare('SELECT * FROM audit_log ORDER BY timestamp DESC LIMIT ?')
 
   return {
     log(eventType, summary, details = {}) {

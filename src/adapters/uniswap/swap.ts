@@ -10,16 +10,12 @@ import type { UserOpCall } from '../../wallet-core/userop.js'
  * Builds UserOp calls for an exact-in swap on Uniswap V3.
  * Returns [approve (if needed), swap] calls.
  */
-export function buildSwapCalls(
-  chainId: SupportedChainId,
-  params: SwapBuildParams,
-): UserOpCall[] {
+export function buildSwapCalls(chainId: SupportedChainId, params: SwapBuildParams): UserOpCall[] {
   const addresses = getUniswapAddresses(chainId)
   const { quote, recipient, slippageBps } = params
 
   // Calculate minimum output with slippage
-  const amountOutMinimum =
-    quote.amountOutRaw - (quote.amountOutRaw * BigInt(slippageBps)) / 10000n
+  const amountOutMinimum = quote.amountOutRaw - (quote.amountOutRaw * BigInt(slippageBps)) / 10000n
 
   // Only native ETH (symbol "ETH", no contract address) triggers native path.
   // WETH is an ERC-20 and must go through the approve+swap path.

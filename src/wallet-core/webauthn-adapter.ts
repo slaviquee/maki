@@ -9,11 +9,7 @@ import type { SignerClient } from '../signer/types.js'
  * This adapter constructs minimal but valid WebAuthn structures around
  * the raw Secure Enclave signature.
  */
-export function createWebAuthnAccount(
-  signer: SignerClient,
-  publicKeyHex: Hex,
-  credentialId: string,
-): WebAuthnAccount {
+export function createWebAuthnAccount(signer: SignerClient, publicKeyHex: Hex, credentialId: string): WebAuthnAccount {
   async function signWithWebAuthn(hash: Hex): Promise<WebAuthnSignReturnType> {
     const result = await signer.signHash({
       hash,

@@ -21,7 +21,12 @@ export function registerAaveTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
 
       if (!getAaveAddresses(maki.config.chainId)) {
         return {
-          content: [{ type: 'text' as const, text: `Aave is not available on ${chainName(maki.config.chainId)}. Aave V3 is only on Base mainnet.` }],
+          content: [
+            {
+              type: 'text' as const,
+              text: `Aave is not available on ${chainName(maki.config.chainId)}. Aave V3 is only on Base mainnet.`,
+            },
+          ],
           details: { available: false },
         }
       }

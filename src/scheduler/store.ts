@@ -7,7 +7,10 @@ export interface RecurringActionStore {
   get(id: string): RecurringAction | null
   list(): RecurringAction[]
   listActive(): RecurringAction[]
-  update(id: string, updates: Partial<Pick<RecurringAction, 'status' | 'nextRunAt' | 'lastRunAt' | 'lastError' | 'runCount'>>): void
+  update(
+    id: string,
+    updates: Partial<Pick<RecurringAction, 'status' | 'nextRunAt' | 'lastRunAt' | 'lastError' | 'runCount'>>,
+  ): void
   delete(id: string): void
 }
 
@@ -39,7 +42,9 @@ export function createRecurringActionStore(dbPath: string): RecurringActionStore
   const getStmt = db.prepare('SELECT * FROM recurring_actions WHERE id = ?')
   const listStmt = db.prepare('SELECT * FROM recurring_actions ORDER BY created_at DESC')
   const listActiveStmt = db.prepare("SELECT * FROM recurring_actions WHERE status = 'active' ORDER BY next_run_at ASC")
-  const updateStmt = db.prepare('UPDATE recurring_actions SET status = ?, next_run_at = ?, last_run_at = ?, last_error = ?, run_count = ? WHERE id = ?')
+  const updateStmt = db.prepare(
+    'UPDATE recurring_actions SET status = ?, next_run_at = ?, last_run_at = ?, last_error = ?, run_count = ? WHERE id = ?',
+  )
   const deleteStmt = db.prepare('DELETE FROM recurring_actions WHERE id = ?')
 
   function rowToAction(row: Record<string, unknown>): RecurringAction {
@@ -64,10 +69,18 @@ export function createRecurringActionStore(dbPath: string): RecurringActionStore
       const id = randomUUID()
       const now = Date.now()
       insertStmt.run(
-        id, action.type, action.status, JSON.stringify(action.params),
-        action.intervalMs, action.nextRunAt, action.expiresAt,
-        action.lastRunAt ?? null, action.lastError ?? null, 0,
-        action.maxRuns ?? null, now,
+        id,
+        action.type,
+        action.status,
+        JSON.stringify(action.params),
+        action.intervalMs,
+        action.nextRunAt,
+        action.expiresAt,
+        action.lastRunAt ?? null,
+        action.lastError ?? null,
+        0,
+        action.maxRuns ?? null,
+        now,
       )
       return { ...action, id, createdAt: now, runCount: 0 }
     },

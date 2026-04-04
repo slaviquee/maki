@@ -37,11 +37,7 @@ export function createPimlicoBundlerClient(config: BundlerConfig): ReturnType<ty
 /**
  * Creates a viem bundler client for a smart account.
  */
-export function createAccountBundlerClient(
-  account: SmartAccount,
-  chain: Chain,
-  bundlerUrl: string,
-) {
+export function createAccountBundlerClient(account: SmartAccount, chain: Chain, bundlerUrl: string) {
   return createBundlerClient({
     account,
     chain,

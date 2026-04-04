@@ -16,10 +16,7 @@ export interface UserOpPlan {
 /**
  * Encodes calls into smart account calldata.
  */
-export async function encodeUserOpCalls(
-  account: SmartAccount,
-  calls: UserOpCall[],
-): Promise<Hex> {
+export async function encodeUserOpCalls(account: SmartAccount, calls: UserOpCall[]): Promise<Hex> {
   return account.encodeCalls(
     calls.map((c) => ({
       to: c.to,
@@ -34,11 +31,7 @@ export async function encodeUserOpCalls(
  * This is deterministic — never from model prose.
  */
 export function renderUserOpSummary(plan: UserOpPlan): string {
-  const lines = [
-    `Action: ${plan.description}`,
-    `Risk class: ${plan.actionClass}`,
-    `Steps: ${plan.calls.length}`,
-  ]
+  const lines = [`Action: ${plan.description}`, `Risk class: ${plan.actionClass}`, `Steps: ${plan.calls.length}`]
 
   for (let i = 0; i < plan.calls.length; i++) {
     const call = plan.calls[i]!

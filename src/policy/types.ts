@@ -70,6 +70,4 @@ export interface ActionDetails {
   slippageBps?: number
 }
 
-export type PolicyDecision =
-  | { allowed: true; approvalMode: ApprovalMode }
-  | { allowed: false; reason: string }
+export type PolicyDecision = { allowed: true; approvalMode: ApprovalMode } | { allowed: false; reason: string }

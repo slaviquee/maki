@@ -6,6 +6,7 @@ description: Default context for Base chain operations. Safety rails, common add
 # Base Defaults
 
 ## Chain Context
+
 - Base is an L2 built on the OP Stack, settling to Ethereum mainnet
 - Chain ID 8453 (mainnet), 84532 (Sepolia testnet)
 - Native token is ETH (bridged from L1)
@@ -13,6 +14,7 @@ description: Default context for Base chain operations. Safety rails, common add
 - Gas fees are typically under $0.01
 
 ## Safety Rails
+
 - Always resolve ENS names before using them as addresses
 - Always check balances before suggesting transfers or swaps
 - Never construct raw calldata — use the typed wallet tools
@@ -21,6 +23,7 @@ description: Default context for Base chain operations. Safety rails, common add
 - All write actions require approval — never bypass this
 
 ## Common Tokens on Base
+
 - ETH (native gas token)
 - WETH: 0x4200000000000000000000000000000000000006
 - USDC: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913

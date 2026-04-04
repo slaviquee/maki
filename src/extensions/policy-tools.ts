@@ -9,7 +9,10 @@ import type { MakiContext } from './context.js'
  * Requests admin-level approval (action class 3) via the signer daemon.
  * All policy changes are admin actions per the spec.
  */
-async function requireAdminApproval(maki: MakiContext, summary: string): Promise<{ approved: boolean; error?: string }> {
+async function requireAdminApproval(
+  maki: MakiContext,
+  summary: string,
+): Promise<{ approved: boolean; error?: string }> {
   const policy = maki.policy.load()
   const decision = checkAction(policy, 3, { type: 'admin_policy_change' })
 
@@ -46,10 +49,9 @@ export function registerPolicyTools(pi: ExtensionAPI, getCtx: () => MakiContext)
       'This is an admin action (class 3) — requires Touch ID.',
     ],
     parameters: Type.Object({
-      profile: Type.Union(
-        [Type.Literal('locked'), Type.Literal('balanced'), Type.Literal('relaxed')],
-        { description: 'Security profile to activate' },
-      ),
+      profile: Type.Union([Type.Literal('locked'), Type.Literal('balanced'), Type.Literal('relaxed')], {
+        description: 'Security profile to activate',
+      }),
     }),
 
     async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
@@ -151,13 +153,13 @@ export function registerPolicyTools(pi: ExtensionAPI, getCtx: () => MakiContext)
   pi.registerTool({
     name: 'update_allowlist',
     label: 'Update Allowlist',
-    description: 'Add or remove entries from token, protocol, or recipient allowlists. Admin action requiring Touch ID.',
+    description:
+      'Add or remove entries from token, protocol, or recipient allowlists. Admin action requiring Touch ID.',
     promptSnippet: 'update_allowlist: manage token/protocol/recipient allowlists',
     parameters: Type.Object({
-      list: Type.Union(
-        [Type.Literal('recipients'), Type.Literal('protocols'), Type.Literal('tokens')],
-        { description: 'Which allowlist to update' },
-      ),
+      list: Type.Union([Type.Literal('recipients'), Type.Literal('protocols'), Type.Literal('tokens')], {
+        description: 'Which allowlist to update',
+      }),
       action: Type.Union([Type.Literal('add'), Type.Literal('remove')], {
         description: 'Add or remove the entry',
       }),

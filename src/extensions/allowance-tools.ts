@@ -36,7 +36,14 @@ export function registerAllowanceTools(pi: ExtensionAPI, getCtx: () => MakiConte
 
       return {
         content: [{ type: 'text' as const, text: `Active allowances:\n${lines.join('\n')}` }],
-        details: { allowances: allowances.map((a) => ({ token: a.token.symbol, spender: a.spenderLabel ?? a.spender, amount: a.formatted, unlimited: a.isUnlimited })) },
+        details: {
+          allowances: allowances.map((a) => ({
+            token: a.token.symbol,
+            spender: a.spenderLabel ?? a.spender,
+            amount: a.formatted,
+            unlimited: a.isUnlimited,
+          })),
+        },
       }
     },
   })

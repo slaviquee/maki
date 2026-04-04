@@ -6,12 +6,15 @@ description: Portfolio reading and balance checking. Use when the user asks abou
 # Portfolio
 
 ## Reading Balances
+
 Use `get_balances` to show the user's ETH and token balances on Base.
 
 ## Checking Allowances
+
 Use `get_allowances` to show active token approvals and which protocols can spend tokens.
 
 ## Best Practices
+
 - Always show balances with token symbols and formatted amounts
 - If balances are zero, suggest the user fund their wallet
 - For testnet (Base Sepolia), suggest using a faucet

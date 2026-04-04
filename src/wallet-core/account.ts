@@ -17,11 +17,7 @@ export interface SmartAccountInfo {
  * The wallet uses P-256 (secp256r1) signatures from Apple Secure Enclave,
  * wrapped in WebAuthn format for on-chain verification.
  */
-export async function createSmartAccount(
-  client: PublicClient,
-  signer: SignerClient,
-  opts?: { nonce?: bigint },
-) {
+export async function createSmartAccount(client: PublicClient, signer: SignerClient, opts?: { nonce?: bigint }) {
   // Get P-256 public key from signer
   const keyResult = await signer.getPublicKey()
   const publicKeyHex = keyResult.publicKey as Hex
@@ -43,10 +39,7 @@ export async function createSmartAccount(
 /**
  * Gets info about the smart account without creating a full account instance.
  */
-export async function getSmartAccountInfo(
-  client: PublicClient,
-  signer: SignerClient,
-): Promise<SmartAccountInfo> {
+export async function getSmartAccountInfo(client: PublicClient, signer: SignerClient): Promise<SmartAccountInfo> {
   const account = await createSmartAccount(client, signer)
   const isDeployed = await account.isDeployed()
   const coords = await signer.getPublicKeyCoordinates()

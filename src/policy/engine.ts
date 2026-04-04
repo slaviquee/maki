@@ -5,7 +5,7 @@ const CLASS_TO_APPROVAL_KEY: Record<ActionClass, keyof Policy['approval'] | null
   0: null,
   1: 'low_risk',
   2: 'medium_risk',
-  3: 'high_risk',
+  3: 'admin',
   4: null,
 }
 
@@ -41,7 +41,10 @@ export function checkAction(
   if (details.recipient && policy.allowlists.recipients.length > 0) {
     if (!policy.allowlists.recipients.includes(details.recipient)) {
       if (policy.dangerous_actions.new_recipients === 'deny') {
-        return { allowed: false, reason: `Recipient ${details.recipient} not in allowlist and new recipients are denied` }
+        return {
+          allowed: false,
+          reason: `Recipient ${details.recipient} not in allowlist and new recipients are denied`,
+        }
       }
       // 'ask' mode: escalate to higher risk class (touch_id)
     }

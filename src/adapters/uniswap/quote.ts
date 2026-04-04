@@ -65,9 +65,7 @@ export async function getSwapQuote(
   }
 
   if (!bestQuote) {
-    throw new Error(
-      `No liquidity found for ${params.tokenIn.symbol} → ${params.tokenOut.symbol} on any fee tier`,
-    )
+    throw new Error(`No liquidity found for ${params.tokenIn.symbol} → ${params.tokenOut.symbol} on any fee tier`)
   }
 
   return bestQuote

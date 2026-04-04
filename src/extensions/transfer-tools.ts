@@ -4,6 +4,7 @@ import { buildErc20Transfer, buildNativeTransfer } from '../adapters/erc20/index
 import { findToken } from '../wallet-core/tokens.js'
 import { resolveEns } from '../wallet-core/ens.js'
 import { executeWriteAction } from '../wallet-core/execute.js'
+import { estimateUsdValue } from '../wallet-core/price-estimate.js'
 import type { MakiContext } from './context.js'
 
 export function registerTransferTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
@@ -47,7 +48,7 @@ export function registerTransferTools(pi: ExtensionAPI, getCtx: () => MakiContex
             type: 'transfer',
             recipient: to,
             token: 'ETH',
-            // TODO: populate amountUsd from price feed when available
+            amountUsd: estimateUsdValue('ETH', params.amount),
           },
         },
         maki.chainClient,
@@ -118,6 +119,7 @@ export function registerTransferTools(pi: ExtensionAPI, getCtx: () => MakiContex
             type: 'transfer',
             recipient: to,
             token: tokenInfo.symbol,
+            amountUsd: estimateUsdValue(tokenInfo.symbol, params.amount),
           },
         },
         maki.chainClient,
