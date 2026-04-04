@@ -171,6 +171,24 @@ describe('accessProtectedEndpoint', () => {
     expect(result.error).toContain('EIP-1271 on the active wallet chain only')
   })
 
+  it('fails closed in Ledger EOA demo mode', async () => {
+    const { accessProtectedEndpoint } = await import('./client.js')
+
+    const result = await accessProtectedEndpoint(
+      {
+        signer: {} as never,
+        chainClient: {} as never,
+        chainId: 84532,
+        accountMode: 'eoa-demo',
+      },
+      'http://localhost:4021/protected',
+    )
+
+    expect(result.success).toBe(false)
+    expect(result.verified).toBe(false)
+    expect(result.error).toContain('only supported in smart-account mode')
+  })
+
   it('returns error when the server only supports a different chain', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: false,

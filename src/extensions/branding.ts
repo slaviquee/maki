@@ -113,7 +113,7 @@ function createMakiHeader(_tui: TUI, theme: Theme): Component & { dispose?(): vo
     'dim',
     [
       'On-chain terminal agent — check balances, send tokens, swap on Uniswap,',
-      'manage approvals. Private keys stay in Apple Secure Enclave.',
+      'manage approvals. Private keys stay in hardware (Secure Enclave or Ledger).',
     ].join('\n'),
   )
 
@@ -132,14 +132,19 @@ function createMakiHeader(_tui: TUI, theme: Theme): Component & { dispose?(): vo
 const ABOUT_TEXT = [
   'maki — on-chain terminal agent',
   '',
-  'Maki lets you manage an ERC-4337 smart account from your terminal.',
+  'Maki lets you manage on-chain assets from your terminal.',
   'Ask in plain English to check balances, send tokens, swap on Uniswap,',
   'resolve ENS names, inspect approvals, or interact with Aave.',
   '',
   'Security:',
-  '  Private keys live in Apple Secure Enclave — the AI never sees them.',
+  '  Private keys live in hardware — Apple Secure Enclave or Ledger.',
+  '  The AI never sees key material.',
   '  Every write: deterministic build > simulate > policy check >',
-  '  human-readable summary > Touch ID > sign > submit.',
+  '  human-readable summary > hardware approval > sign > submit.',
+  '',
+  'Account modes:',
+  '  Secure Enclave  P-256 key, ERC-4337 smart account, Touch ID (macOS)',
+  '  Ledger EOA      secp256k1, direct transactions, on-device confirm',
   '',
   'Commands:',
   '  /doctor    Health checks (signer, RPC, policy, account)',
@@ -150,7 +155,7 @@ const ABOUT_TEXT = [
   'Getting started:',
   '  1. maki signer start     (in a separate terminal)',
   '  2. /login                 (pick your model provider)',
-  '  3. "Create my smart account"',
+  '  3. "Create my smart account" or "Setup my ledger account"',
   '  4. Fund your address and go',
 ].join('\n')
 

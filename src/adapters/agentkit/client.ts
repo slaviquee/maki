@@ -11,6 +11,7 @@ export interface AgentkitClientConfig {
   chainClient: PublicClient
   chainId: SupportedChainId
   smartAccountAddress?: `0x${string}`
+  accountMode?: 'smart-account' | 'eoa-demo'
 }
 
 /**
@@ -28,6 +29,16 @@ export async function accessProtectedEndpoint(
   url: string,
   method: string = 'GET',
 ): Promise<AgentkitAccessResult> {
+  if (config.accountMode === 'eoa-demo') {
+    return {
+      success: false,
+      status: 0,
+      verified: false,
+      body: {},
+      error: 'World AgentKit is only supported in smart-account mode. Switch back to the smart-account demo flow.',
+    }
+  }
+
   // Step 1: Initial request
   const initialResponse = await fetch(url, { method })
 

@@ -5,6 +5,7 @@ import { getAllATokens } from '../adapters/aave/markets.js'
 import { chainName } from '../wallet-core/chains.js'
 import { executeWriteAction } from '../wallet-core/execute.js'
 import type { MakiContext } from './context.js'
+import { getActiveAddress } from './context.js'
 
 export function registerAaveTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
   pi.registerTool({
@@ -16,8 +17,8 @@ export function registerAaveTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
 
     async execute(_toolCallId, _params, _signal, _onUpdate, _ctx) {
       const maki = getCtx()
-      const address = maki.config.smartAccountAddress
-      if (!address) throw new Error('No smart account configured.')
+      const address = getActiveAddress(maki)
+      if (!address) throw new Error('No account configured.')
 
       if (!getAaveAddresses(maki.config.chainId)) {
         return {
@@ -70,8 +71,8 @@ export function registerAaveTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
 
     async execute(_toolCallId, _params, _signal, _onUpdate, _ctx) {
       const maki = getCtx()
-      const from = maki.config.smartAccountAddress
-      if (!from) throw new Error('No smart account configured.')
+      const from = getActiveAddress(maki)
+      if (!from) throw new Error('No account configured.')
 
       // Resolve aTokens deterministically from the known market registry
       // Model output is never used as calldata input

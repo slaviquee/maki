@@ -85,17 +85,17 @@ A user can install from terminal in under 10 minutes, create a hardware-backed s
 
 ## Hard product decisions
 
-| # | Decision | Choice |
-|---|----------|--------|
-| 1 | Agent shell | First-party Pi package, not a custom terminal from scratch |
-| 2 | Agent model | Local-only, runs on user's laptop |
-| 3 | Signer | P-256 key in Apple Secure Enclave |
-| 4 | Account | ERC-4337 smart account with hardware-backed signer ownership |
-| 5 | Gas | User pays gas; no sponsorship in v1 |
-| 6 | Recovery | Single recovery address at setup; freeze is fast, unfreeze is slow, rotation is delayed |
-| 7 | Approval | User-configurable friction via security profiles; no approval codes |
-| 8 | Policy | All security controls in one local policy object |
-| 9 | Distribution | Homebrew-installed system layer + first-party Pi package for extensions/skills |
+| #   | Decision     | Choice                                                                                  |
+| --- | ------------ | --------------------------------------------------------------------------------------- |
+| 1   | Agent shell  | First-party Pi package, not a custom terminal from scratch                              |
+| 2   | Agent model  | Local-only, runs on user's laptop                                                       |
+| 3   | Signer       | P-256 key in Apple Secure Enclave                                                       |
+| 4   | Account      | ERC-4337 smart account with hardware-backed signer ownership                            |
+| 5   | Gas          | User pays gas; no sponsorship in v1                                                     |
+| 6   | Recovery     | Single recovery address at setup; freeze is fast, unfreeze is slow, rotation is delayed |
+| 7   | Approval     | User-configurable friction via security profiles; no approval codes                     |
+| 8   | Policy       | All security controls in one local policy object                                        |
+| 9   | Distribution | Homebrew-installed system layer + first-party Pi package for extensions/skills          |
 
 ---
 
@@ -175,13 +175,13 @@ Every user request flows through:
 
 ## Action classes
 
-| Class | Examples | Approval |
-|-------|----------|----------|
-| 0 — read-only | Balances, allowances, positions, ENS lookups | None |
-| 1 — low-risk write | Transfer to allowlisted recipient below cap, revoke approval, small swap on allowlisted protocol | Touch ID, or auto-approve if policy allows |
-| 2 — medium-risk write | Larger swap within policy, claim rewards, DeFi action on allowlisted protocol | Touch ID |
-| 3 — high-risk / admin | New recipient, new protocol, policy changes, allowlist edits, unfreeze, key rotation | Touch ID |
-| 4 — forbidden | Arbitrary calldata from prompt, unlimited approval when forbidden, contract upgrade, owner change outside recovery | Denied |
+| Class                 | Examples                                                                                                           | Approval                                   |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------ |
+| 0 — read-only         | Balances, allowances, positions, ENS lookups                                                                       | None                                       |
+| 1 — low-risk write    | Transfer to allowlisted recipient below cap, revoke approval, small swap on allowlisted protocol                   | Touch ID, or auto-approve if policy allows |
+| 2 — medium-risk write | Larger swap within policy, claim rewards, DeFi action on allowlisted protocol                                      | Touch ID                                   |
+| 3 — high-risk / admin | New recipient, new protocol, policy changes, allowlist edits, unfreeze, key rotation                               | Touch ID                                   |
+| 4 — forbidden         | Arbitrary calldata from prompt, unlimited approval when forbidden, contract upgrade, owner change outside recovery | Denied                                     |
 
 ---
 
@@ -210,7 +210,7 @@ policy:
   profile: balanced
   account:
     chain: base
-    recovery_address: "0x..."
+    recovery_address: '0x...'
   approval:
     low_risk: touch_id
     medium_risk: touch_id
@@ -225,10 +225,10 @@ policy:
     max_slippage_bps: 50
     max_gas_usd: 10
   allowlists:
-    recipients: ["alice.eth"]
-    protocols: ["uniswap", "aave"]
-    tokens: ["ETH", "USDC"]
-    chains: ["base"]
+    recipients: ['alice.eth']
+    protocols: ['uniswap', 'aave']
+    tokens: ['ETH', 'USDC']
+    chains: ['base']
   dangerous_actions:
     unlimited_approvals: false
     new_recipients: ask
@@ -238,7 +238,7 @@ policy:
     owner_changes: deny
   automation:
     enabled: false
-    allowed_actions: ["transfer", "swap"]
+    allowed_actions: ['transfer', 'swap']
     auto_execute: false
 ```
 
@@ -363,12 +363,12 @@ Installs: main CLI, native signer daemon, first-party Pi package (extensions, sk
 
 ## Implementation stack
 
-| Layer | Stack |
-|-------|-------|
-| Shell / agent | Pi, TypeScript |
-| Wallet core | TypeScript, viem, ERC-4337 client |
-| Signer daemon | Backend-agnostic IPC over Unix domain socket. v1 default: Swift + Secure Enclave + LocalAuthentication. Ledger backend: @ledgerhq/hw-transport-node-hid |
-| Storage | Local SQLite, encrypted config, JSON/YAML export |
+| Layer         | Stack                                                                                                                                            |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Shell / agent | Pi, TypeScript                                                                                                                                   |
+| Wallet core   | TypeScript, viem, ERC-4337 client                                                                                                                |
+| Signer daemon | Backend-agnostic IPC over Unix domain socket. v1 default: Swift + Secure Enclave + LocalAuthentication. Ledger backend: DMK + Speculos transport |
+| Storage       | Local SQLite, encrypted config, JSON/YAML export                                                                                                 |
 
 ---
 
@@ -386,7 +386,7 @@ The agent already resolves ENS for transfers. Extension: give the agent itself a
 
 ### Ledger — AI Agents x Ledger ($6K)
 
-The signer daemon is already backend-agnostic. Ledger backend: user picks Ledger during setup, daemon talks to device over USB via `@ledgerhq/hw-transport-node-hid`, deploys a secp256k1-verifying smart account instead of P-256. The rest of the stack is unchanged. Ledger becomes the hardware trust layer for the AI agent — human-in-the-loop approval on a physical device. Also eligible for "Clear Signing" track ($4K) — generate ERC-7730 clear signing metadata for the transaction types the agent supports.
+The signer daemon is already backend-agnostic. Ledger backend: user picks Ledger during setup, the Node signer talks to Speculos via Ledger's DMK HTTP transport, and Maki deploys a secp256k1-verifying smart account instead of P-256. The rest of the stack is unchanged. Ledger becomes the hardware trust layer for the AI agent through the emulator today, with physical USB support deferred until Ledger's stable HID transport catches up to the DMK signer stack. Also eligible for "Clear Signing" track ($4K) — generate ERC-7730 clear signing metadata for the transaction types the agent supports.
 
 ### World — Best use of AgentKit ($8K)
 

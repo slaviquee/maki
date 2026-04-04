@@ -3,6 +3,7 @@ import { Type } from '@sinclair/typebox'
 import { getAllowances, getKnownSpenders } from '../wallet-core/allowances.js'
 import { getTokenRegistry } from '../wallet-core/tokens.js'
 import type { MakiContext } from './context.js'
+import { getActiveAddress } from './context.js'
 
 export function registerAllowanceTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
   pi.registerTool({
@@ -14,7 +15,7 @@ export function registerAllowanceTools(pi: ExtensionAPI, getCtx: () => MakiConte
 
     async execute(_toolCallId, _params, _signal, _onUpdate, _ctx) {
       const maki = getCtx()
-      const address = maki.config.smartAccountAddress
+      const address = getActiveAddress(maki)
       if (!address) {
         throw new Error('No wallet address configured.')
       }

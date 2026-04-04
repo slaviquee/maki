@@ -2,7 +2,7 @@ import { mkdirSync, existsSync, writeFileSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { stringify as yamlStringify, parse as yamlParse } from 'yaml'
 import { paths } from './paths.js'
-import type { MakiConfig } from './types.js'
+import type { LedgerAccountMode, LedgerConfig, MakiConfig } from './types.js'
 import { defaultPolicy } from '../policy/defaults.js'
 
 const DEFAULT_WORLD = {
@@ -20,6 +20,10 @@ const DEFAULT_CONFIG = {
   world: DEFAULT_WORLD,
 }
 
+function normalizeLedgerTransport(_value: unknown): LedgerConfig['transport'] {
+  return 'speculos'
+}
+
 function inferSetupComplete(raw: Record<string, unknown>): boolean {
   if (typeof raw['setupComplete'] === 'boolean') {
     return raw['setupComplete']
@@ -28,7 +32,8 @@ function inferSetupComplete(raw: Record<string, unknown>): boolean {
   return (
     typeof raw['smartAccountAddress'] === 'string' ||
     typeof raw['bundlerApiKey'] === 'string' ||
-    raw['signerType'] === 'secure-enclave'
+    raw['signerType'] === 'secure-enclave' ||
+    raw['signerType'] === 'ledger'
   )
 }
 
@@ -75,6 +80,21 @@ export function bootstrap(): MakiConfig {
     ? rawWorld['allowedOrigins'].filter((value): value is string => typeof value === 'string')
     : []
 
+  // Parse ledger config if present
+  const rawLedger = raw['ledger'] as Record<string, unknown> | undefined
+  let ledger: LedgerConfig | undefined
+  if (rawLedger) {
+    const rawAccountMode = rawLedger['accountMode'] as string | undefined
+    const accountMode: LedgerAccountMode | undefined = rawAccountMode === 'eoa-demo' ? 'eoa-demo' : undefined
+    ledger = {
+      transport: normalizeLedgerTransport(rawLedger['transport']),
+      derivationPath: (rawLedger['derivationPath'] as string) ?? "44'/60'/0'/0/0",
+      speculosHost: rawLedger['speculosHost'] as string | undefined,
+      speculosPort: rawLedger['speculosPort'] as number | undefined,
+      accountMode,
+    }
+  }
+
   return {
     chainId: (raw['chainId'] as MakiConfig['chainId']) ?? 84532,
     rpcUrl: (raw['rpcUrl'] as string) ?? 'https://sepolia.base.org',
@@ -85,8 +105,10 @@ export function bootstrap(): MakiConfig {
     signerType: (raw['signerType'] as MakiConfig['signerType']) ?? 'none',
     setupComplete: inferSetupComplete(raw),
     smartAccountAddress: raw['smartAccountAddress'] as `0x${string}` | undefined,
+    ledgerAddress: raw['ledgerAddress'] as `0x${string}` | undefined,
     bundlerApiKey: (raw['bundlerApiKey'] as string) ?? undefined,
     uniswapApiKey: (raw['uniswapApiKey'] as string) ?? undefined,
+    ledger,
     world: {
       enabled: (rawWorld['enabled'] as boolean) ?? DEFAULT_WORLD.enabled,
       defaultUrl: (rawWorld['defaultUrl'] as string) ?? DEFAULT_WORLD.defaultUrl,

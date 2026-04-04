@@ -4,7 +4,7 @@ import { createInterface } from 'node:readline/promises'
 import { parse as yamlParse, stringify as yamlStringify } from 'yaml'
 import { bootstrap } from '../config/bootstrap.js'
 import { paths } from '../config/paths.js'
-import type { MakiConfig, SupportedChainId } from '../config/types.js'
+import type { LedgerConfig, LedgerTransport, MakiConfig, SupportedChainId } from '../config/types.js'
 import { defaultPolicy } from '../policy/defaults.js'
 import type { Policy, SecurityProfile } from '../policy/types.js'
 import { ensureSignerBinary } from './signer.js'
@@ -24,7 +24,8 @@ export function inferSetupComplete(raw: Record<string, unknown>): boolean {
   return (
     typeof raw['smartAccountAddress'] === 'string' ||
     typeof raw['bundlerApiKey'] === 'string' ||
-    raw['signerType'] === 'secure-enclave'
+    raw['signerType'] === 'secure-enclave' ||
+    raw['signerType'] === 'ledger'
   )
 }
 
@@ -134,7 +135,14 @@ function parseProfileChoice(value: string): SecurityProfile {
 }
 
 function parseSignerChoice(value: string): MakiConfig['signerType'] {
-  return value.trim() === '2' ? 'mock' : 'secure-enclave'
+  switch (value.trim()) {
+    case '2':
+      return 'ledger'
+    case '3':
+      return 'mock'
+    default:
+      return 'secure-enclave'
+  }
 }
 
 function normalizeOptional(value: string): string | undefined {
@@ -180,8 +188,27 @@ export async function runSetupWizard(packageRoot: string, launchAfterSetup: bool
     'Network: [1] Base Sepolia (recommended), [2] Base Mainnet, [3] Ethereum Sepolia. Default 1: ',
   )
   const chainId = parseChainChoice(chainChoice)
-  const signerChoice = await ask('Signer backend: [1] Secure Enclave (recommended), [2] Mock. Default 1: ')
+  const signerChoice = await ask('Signer backend: [1] Secure Enclave (recommended), [2] Ledger, [3] Mock. Default 1: ')
   const signerType = parseSignerChoice(signerChoice)
+
+  let ledgerConfig: LedgerConfig | undefined
+  if (signerType === 'ledger') {
+    const derivationPathInput = await ask("Derivation path (default: 44'/60'/0'/0/0): ")
+    const derivationPath = derivationPathInput.trim() || "44'/60'/0'/0/0"
+    const transport: LedgerTransport = 'speculos'
+    const speculosHost = normalizeOptional(await ask('Speculos host (default: 127.0.0.1): ')) ?? '127.0.0.1'
+    const portInput = await ask('Speculos HTTP port (default: 5000): ')
+    const speculosPort = portInput.trim() ? parseInt(portInput.trim(), 10) : 5000
+
+    ledgerConfig = { transport, derivationPath, speculosHost, speculosPort, accountMode: 'eoa-demo' }
+
+    output.write('\nLedger setup notes:\n')
+    output.write(`  Account mode: EOA demo (direct transactions, no bundler needed)\n`)
+    output.write(`  Speculos emulator: ${speculosHost}:${speculosPort}\n`)
+    output.write('  Start Speculos before running: maki signer start\n')
+    output.write('  Physical USB Ledger transport is deferred in this build.\n')
+    output.write(`  Derivation path: ${derivationPath}\n\n`)
+  }
   const bundlerApiKey = normalizeOptional(
     await ask('Pimlico bundler API key (optional now, needed for live writes). Leave blank to skip: '),
   )
@@ -233,6 +260,18 @@ export async function runSetupWizard(packageRoot: string, launchAfterSetup: bool
     delete raw['uniswapApiKey']
   }
 
+  if (ledgerConfig) {
+    raw['ledger'] = {
+      transport: ledgerConfig.transport,
+      derivationPath: ledgerConfig.derivationPath,
+      ...(ledgerConfig.speculosHost ? { speculosHost: ledgerConfig.speculosHost } : {}),
+      ...(ledgerConfig.speculosPort ? { speculosPort: ledgerConfig.speculosPort } : {}),
+      ...(ledgerConfig.accountMode ? { accountMode: ledgerConfig.accountMode } : {}),
+    }
+  } else {
+    delete raw['ledger']
+  }
+
   raw['world'] = {
     enabled: worldEnabled,
     defaultUrl: worldDefaultUrl,
@@ -273,6 +312,10 @@ export async function runSetupWizard(packageRoot: string, launchAfterSetup: bool
     }
   }
 
+  if (signerType === 'ledger') {
+    output.write('\nLedger signer uses the TypeScript Ledger DMK backend (no Swift build needed).\n')
+  }
+
   output.write('\nSetup saved.\n')
   output.write(`Network: ${chainLabel(chainId)}\n`)
   output.write(`Signer: ${signerType}\n`)
@@ -291,11 +334,24 @@ export async function runSetupWizard(packageRoot: string, launchAfterSetup: bool
       output.write('World registration: not completed yet\n')
     }
   }
+  if (ledgerConfig) {
+    output.write(`Ledger transport: ${ledgerConfig.transport}\n`)
+    output.write(`Derivation path: ${ledgerConfig.derivationPath}\n`)
+    output.write(`Speculos: ${ledgerConfig.speculosHost ?? '127.0.0.1'}:${ledgerConfig.speculosPort ?? 5000}\n`)
+  }
   output.write('\nNext steps:\n')
-  output.write('1. In another terminal, run: maki signer start\n')
-  output.write('2. In Maki, run /login to pick your model provider\n')
-  output.write('3. Ask: Create my smart account\n')
-  output.write('4. Fund the address and ask Maki to check balances, swap, or send funds\n')
+  if (signerType === 'ledger') {
+    output.write('1. Start Speculos: speculos path/to/app-ethereum/build/nanos2/bin/app.elf\n')
+    output.write('2. In another terminal, run: maki signer start\n')
+    output.write('3. In Maki, run /login to pick your model provider\n')
+    output.write('4. Ask: Setup my ledger account\n')
+    output.write('5. Fund the EOA address and ask Maki to send ETH\n')
+  } else {
+    output.write('1. In another terminal, run: maki signer start\n')
+    output.write('2. In Maki, run /login to pick your model provider\n')
+    output.write('3. Ask: Create my smart account\n')
+    output.write('4. Fund the address and ask Maki to check balances, swap, or send funds\n')
+  }
   if (worldEnabled) {
     if (existingSmartAccountAddress) {
       output.write('5. Use /world status or /world register inside Maki for the World AgentKit demo flow\n')

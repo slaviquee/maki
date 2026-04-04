@@ -3,6 +3,7 @@ import { Type } from '@sinclair/typebox'
 import { simulateCall, estimateCallGas } from '../wallet-core/simulation.js'
 import type { Hex } from 'viem'
 import type { MakiContext } from './context.js'
+import { getActiveAddress } from './context.js'
 
 export function registerSimulationTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
   pi.registerTool({
@@ -18,8 +19,8 @@ export function registerSimulationTools(pi: ExtensionAPI, getCtx: () => MakiCont
 
     async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
       const maki = getCtx()
-      const from = maki.config.smartAccountAddress
-      if (!from) throw new Error('No smart account configured.')
+      const from = getActiveAddress(maki)
+      if (!from) throw new Error('No account configured.')
 
       const result = await simulateCall(maki.chainClient, from, {
         to: params.to as `0x${string}`,
@@ -51,8 +52,8 @@ export function registerSimulationTools(pi: ExtensionAPI, getCtx: () => MakiCont
 
     async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
       const maki = getCtx()
-      const from = maki.config.smartAccountAddress
-      if (!from) throw new Error('No smart account configured.')
+      const from = getActiveAddress(maki)
+      if (!from) throw new Error('No account configured.')
 
       const result = await estimateCallGas(maki.chainClient, from, {
         to: params.to as `0x${string}`,

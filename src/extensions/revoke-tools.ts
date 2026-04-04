@@ -5,6 +5,7 @@ import { findToken } from '../wallet-core/tokens.js'
 import { executeWriteAction } from '../wallet-core/execute.js'
 import { submitApproved } from './submit-helper.js'
 import type { MakiContext } from './context.js'
+import { getActiveAddress } from './context.js'
 
 export function registerRevokeTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
   pi.registerTool({
@@ -24,8 +25,8 @@ export function registerRevokeTools(pi: ExtensionAPI, getCtx: () => MakiContext)
 
     async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
       const maki = getCtx()
-      const from = maki.config.smartAccountAddress
-      if (!from) throw new Error('No smart account configured.')
+      const from = getActiveAddress(maki)
+      if (!from) throw new Error('No account configured.')
 
       const tokenInfo = findToken(maki.config.chainId, params.token)
       if (!tokenInfo) {

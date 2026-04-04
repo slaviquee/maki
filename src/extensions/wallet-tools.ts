@@ -20,9 +20,18 @@ export function registerWalletTools(pi: ExtensionAPI, getCtx: () => MakiContext)
         `Chain: ${chainName(maki.config.chainId)}`,
         `Signer: ${signerStatus.ready ? 'connected' : 'disconnected'} (${signerStatus.signerType})`,
         `Has key: ${signerStatus.hasKey}`,
-        maki.config.smartAccountAddress
-          ? `Smart account: ${maki.config.smartAccountAddress}`
-          : 'Smart account: not deployed',
+        ...(maki.accountMode === 'eoa-demo'
+          ? [
+              `Account mode: Ledger EOA demo`,
+              maki.config.ledgerAddress
+                ? `EOA address: ${maki.config.ledgerAddress}`
+                : 'EOA address: not set (run setup_ledger_account)',
+            ]
+          : [
+              maki.config.smartAccountAddress
+                ? `Smart account: ${maki.config.smartAccountAddress}`
+                : 'Smart account: not deployed',
+            ]),
         `Security profile: ${policy.profile}`,
       ]
 

@@ -13,6 +13,13 @@ import type {
   SignHashResult,
   ApproveActionParams,
   ApproveActionResult,
+  GetAddressResult,
+  SignPersonalMessageParams,
+  SignPersonalMessageResult,
+  SignTypedDataParams,
+  SignTypedDataResult,
+  SignTransactionParams,
+  SignTransactionResult,
   SignerMethod,
 } from './types.js'
 
@@ -240,6 +247,23 @@ export function createSignerIpcClient(socketPath: string): SignerClient {
 
     approveAction(params: ApproveActionParams) {
       return send<ApproveActionResult>('approve_action', params, SIGN_TIMEOUT)
+    },
+
+    // Ledger structured signing methods
+    getAddress() {
+      return send<GetAddressResult>('get_address', {})
+    },
+
+    signPersonalMessage(params: SignPersonalMessageParams) {
+      return send<SignPersonalMessageResult>('sign_personal_message', params, SIGN_TIMEOUT)
+    },
+
+    signTypedData(params: SignTypedDataParams) {
+      return send<SignTypedDataResult>('sign_typed_data', params, SIGN_TIMEOUT)
+    },
+
+    signTransaction(params: SignTransactionParams) {
+      return send<SignTransactionResult>('sign_transaction', params, SIGN_TIMEOUT)
     },
   }
 }

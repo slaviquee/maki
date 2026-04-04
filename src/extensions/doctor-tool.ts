@@ -15,15 +15,48 @@ async function runDoctorChecks(ctx: MakiContext): Promise<DoctorCheck[]> {
   try {
     const ping = await ctx.signer.ping()
     const signerStatus = await ctx.signer.status()
-    const signerMessage =
-      signerStatus.keyStorage === 'ephemeral'
-        ? `Connected (v${ping.version}), session-only Secure Enclave key`
-        : `Connected (v${ping.version})`
+    let signerMessage: string
+    if (signerStatus.signerType === 'ledger') {
+      const transport = signerStatus.transport ?? 'unknown'
+      const device = signerStatus.deviceConnected ? 'connected' : 'disconnected'
+      const ethApp = signerStatus.ethereumAppOpen ? 'open' : 'not open'
+      signerMessage = `Ledger (v${ping.version}), transport: ${transport}, device: ${device}, Ethereum app: ${ethApp}`
+      if (signerStatus.address) {
+        signerMessage += `, address: ${signerStatus.address.slice(0, 10)}...`
+      }
+    } else if (signerStatus.keyStorage === 'ephemeral') {
+      signerMessage = `Connected (v${ping.version}), session-only Secure Enclave key`
+    } else {
+      signerMessage = `Connected (v${ping.version})`
+    }
     checks.push({
       name: 'Signer daemon',
       status: ping.pong ? 'ok' : 'fail',
       message: ping.pong ? signerMessage : 'Not responding',
     })
+
+    // Ledger-specific readiness checks
+    if (signerStatus.signerType === 'ledger') {
+      if (!signerStatus.deviceConnected) {
+        checks.push({
+          name: 'Ledger device',
+          status: 'fail',
+          message: 'Device not connected. Connect your Ledger and unlock it.',
+        })
+      } else if (!signerStatus.ethereumAppOpen) {
+        checks.push({
+          name: 'Ledger Ethereum app',
+          status: 'fail',
+          message: 'Ethereum app not open. Open the Ethereum app on your Ledger.',
+        })
+      } else {
+        checks.push({
+          name: 'Ledger device',
+          status: 'ok',
+          message: 'Device connected, Ethereum app open',
+        })
+      }
+    }
   } catch {
     checks.push({ name: 'Signer daemon', status: 'fail', message: 'Cannot connect' })
   }
@@ -56,19 +89,42 @@ async function runDoctorChecks(ctx: MakiContext): Promise<DoctorCheck[]> {
     checks.push({ name: 'Policy', status: 'fail', message: 'Invalid or missing' })
   }
 
-  // 4. Smart account
-  if (ctx.config.smartAccountAddress) {
+  // 4. Account — depends on mode
+  const isEoaDemo = ctx.config.ledger?.accountMode === 'eoa-demo' && ctx.config.signerType === 'ledger'
+
+  if (isEoaDemo) {
     checks.push({
-      name: 'Smart account',
+      name: 'Account mode',
       status: 'ok',
-      message: ctx.config.smartAccountAddress,
+      message: 'Ledger EOA demo (direct transactions, no bundler)',
     })
+    if (ctx.config.ledgerAddress) {
+      checks.push({
+        name: 'EOA address',
+        status: 'ok',
+        message: ctx.config.ledgerAddress,
+      })
+    } else {
+      checks.push({
+        name: 'EOA address',
+        status: 'warn',
+        message: 'Not set — run setup_ledger_account',
+      })
+    }
   } else {
-    checks.push({
-      name: 'Smart account',
-      status: 'warn',
-      message: 'Not deployed (read-only mode)',
-    })
+    if (ctx.config.smartAccountAddress) {
+      checks.push({
+        name: 'Smart account',
+        status: 'ok',
+        message: ctx.config.smartAccountAddress,
+      })
+    } else {
+      checks.push({
+        name: 'Smart account',
+        status: 'warn',
+        message: 'Not deployed (read-only mode)',
+      })
+    }
   }
 
   return checks

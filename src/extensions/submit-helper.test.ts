@@ -1,9 +1,19 @@
 import { describe, it, expect, vi } from 'vitest'
 import { submitApproved } from './submit-helper.js'
 import type { WriteResult } from '../wallet-core/execute.js'
-import type { MakiContext, SignerMode } from './context.js'
+import type { MakiContext, SignerMode, AccountMode } from './context.js'
 
-function createMockContext(overrides: { signerMode?: SignerMode; bundlerApiKey?: string } = {}): MakiContext {
+const { mockSubmitEoaTransaction } = vi.hoisted(() => ({
+  mockSubmitEoaTransaction: vi.fn(),
+}))
+
+vi.mock('../wallet-core/eoa-submit.js', () => ({
+  submitEoaTransaction: mockSubmitEoaTransaction,
+}))
+
+function createMockContext(
+  overrides: { signerMode?: SignerMode; bundlerApiKey?: string; accountMode?: AccountMode } = {},
+): MakiContext {
   return {
     config: {
       chainId: 84532,
@@ -13,8 +23,11 @@ function createMockContext(overrides: { signerMode?: SignerMode; bundlerApiKey?:
       configPath: '/tmp/config.yaml',
       dbPath: '/tmp/maki.db',
       signerType: 'secure-enclave',
+      setupComplete: true,
       smartAccountAddress: '0x1234567890abcdef1234567890abcdef12345678',
+      ledgerAddress: '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
       bundlerApiKey: overrides.bundlerApiKey,
+      world: { enabled: false, allowedOrigins: [], registered: false },
     },
     signer: {
       connect: vi.fn(),
@@ -26,8 +39,13 @@ function createMockContext(overrides: { signerMode?: SignerMode; bundlerApiKey?:
       createKey: vi.fn(),
       signHash: vi.fn(),
       approveAction: vi.fn(),
+      getAddress: vi.fn().mockResolvedValue({
+        address: '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
+        publicKey: '0x04' + 'aa'.repeat(64),
+      }),
     },
     signerMode: overrides.signerMode ?? 'secure-enclave',
+    accountMode: overrides.accountMode ?? 'smart-account',
     policy: { load: vi.fn(), save: vi.fn() },
     chainClient: {} as MakiContext['chainClient'],
     spending: { record: vi.fn(), getDailyTotal: vi.fn(), getDailyTotalAll: vi.fn() },
@@ -59,5 +77,20 @@ describe('submitApproved', () => {
     const ctx = createMockContext({ signerMode: 'secure-enclave' })
     const result = await submitApproved(ctx, [], approvedResult)
     expect(result.error).toContain('bundlerApiKey')
+  })
+
+  it('fails closed when the configured Ledger EOA address does not match the connected device', async () => {
+    const ctx = createMockContext({ signerMode: 'ledger', accountMode: 'eoa-demo' })
+    ctx.config.ledgerAddress = '0x1111111111111111111111111111111111111111'
+
+    const result = await submitApproved(
+      ctx,
+      [{ to: '0x2222222222222222222222222222222222222222', value: 1n }],
+      approvedResult,
+    )
+
+    expect(result.status).toBe('error')
+    expect(result.error).toContain('does not match the connected device')
+    expect(mockSubmitEoaTransaction).not.toHaveBeenCalled()
   })
 })

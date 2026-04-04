@@ -8,6 +8,7 @@ import { getUsdcSpendingCapAmount } from '../wallet-core/spending-cap.js'
 import { submitApproved } from './submit-helper.js'
 
 import type { MakiContext } from './context.js'
+import { getActiveAddress } from './context.js'
 
 export function registerTransferTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
   pi.registerTool({
@@ -27,8 +28,14 @@ export function registerTransferTools(pi: ExtensionAPI, getCtx: () => MakiContex
 
     async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
       const maki = getCtx()
-      const from = maki.config.smartAccountAddress
-      if (!from) throw new Error('No smart account configured. Run create_smart_account first.')
+      const from = getActiveAddress(maki)
+      if (!from) {
+        const hint =
+          maki.accountMode === 'eoa-demo'
+            ? 'No Ledger EOA address set. Run setup_ledger_account first.'
+            : 'No smart account configured. Run create_smart_account first.'
+        throw new Error(hint)
+      }
 
       let to = params.to as `0x${string}`
       if (params.to.endsWith('.eth')) {
@@ -66,11 +73,14 @@ export function registerTransferTools(pi: ExtensionAPI, getCtx: () => MakiContex
       }
 
       if (result.status === 'confirmed') {
+        const txLine = result.txHash ? `Tx: ${result.txHash}` : ''
+        const opLine = result.userOpHash ? `UserOp: ${result.userOpHash}` : ''
+        const details = [txLine, opLine].filter(Boolean).join('\n')
         return {
           content: [
             {
               type: 'text' as const,
-              text: `Transfer confirmed on-chain.\nTx: ${result.txHash}\nUserOp: ${result.userOpHash}\n\n${result.summary}`,
+              text: `Transfer confirmed on-chain.\n${details}\n\n${result.summary}`,
             },
           ],
           details: result,
@@ -114,8 +124,14 @@ export function registerTransferTools(pi: ExtensionAPI, getCtx: () => MakiContex
 
     async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
       const maki = getCtx()
-      const from = maki.config.smartAccountAddress
-      if (!from) throw new Error('No smart account configured. Run create_smart_account first.')
+      const from = getActiveAddress(maki)
+      if (!from) {
+        const hint =
+          maki.accountMode === 'eoa-demo'
+            ? 'No Ledger EOA address set. Run setup_ledger_account first.'
+            : 'No smart account configured. Run create_smart_account first.'
+        throw new Error(hint)
+      }
 
       const tokenInfo = findToken(maki.config.chainId, params.token)
       if (!tokenInfo) {
@@ -158,11 +174,14 @@ export function registerTransferTools(pi: ExtensionAPI, getCtx: () => MakiContex
       }
 
       if (result.status === 'confirmed') {
+        const txLine = result.txHash ? `Tx: ${result.txHash}` : ''
+        const opLine = result.userOpHash ? `UserOp: ${result.userOpHash}` : ''
+        const details = [txLine, opLine].filter(Boolean).join('\n')
         return {
           content: [
             {
               type: 'text' as const,
-              text: `Transfer confirmed on-chain.\nTx: ${result.txHash}\nUserOp: ${result.userOpHash}\n\n${result.summary}`,
+              text: `Transfer confirmed on-chain.\n${details}\n\n${result.summary}`,
             },
           ],
           details: result,

@@ -16,6 +16,20 @@ export function registerAgentkitTools(pi: ExtensionAPI, getCtx: () => MakiContex
 
   const execute = async (params: unknown) => {
     const maki = getCtx()
+    if (maki.accountMode === 'eoa-demo') {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text:
+              'World AgentKit is only available in smart-account mode. ' +
+              'For the Ledger demo, use the smart-account flow for AgentKit and Ledger EOA demo mode for direct sends.',
+          },
+        ],
+        details: { supported: false, accountMode: maki.accountMode },
+      }
+    }
+
     const url = (params as { url?: string }).url ?? maki.config.world.defaultUrl ?? DEFAULT_DEMO_URL
     const allowedOrigins = maki.config.world.allowedOrigins.join(',')
     const trustCheck = validateTrustedAgentkitUrl(url, allowedOrigins)
@@ -33,6 +47,7 @@ export function registerAgentkitTools(pi: ExtensionAPI, getCtx: () => MakiContex
         chainClient: maki.chainClient,
         chainId: maki.config.chainId,
         smartAccountAddress: maki.config.smartAccountAddress,
+        accountMode: maki.accountMode,
       },
       url,
     )

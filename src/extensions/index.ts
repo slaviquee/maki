@@ -24,8 +24,9 @@ import { registerRecurringTools } from './recurring-tools.js'
 import { registerAuditTools } from './audit-tools.js'
 import { registerAgentkitTools } from './agentkit-tools.js'
 import { registerWorldCommands } from './world-commands.js'
+import { registerClearSigningTools } from './clear-signing-tools.js'
 import { applyBrandingUI, registerBrandingCommands } from './branding.js'
-import type { MakiContext, SignerMode } from './context.js'
+import type { MakiContext, SignerMode, AccountMode } from './context.js'
 
 export default function makiExtension(pi: ExtensionAPI) {
   let ctx: MakiContext | undefined
@@ -52,9 +53,15 @@ export default function makiExtension(pi: ExtensionAPI) {
       signer = createSignerIpcClient(config.socketPath)
       try {
         await signer.connect()
-        // Query the daemon to determine whether it uses Secure Enclave or mock backend
+        // Query the daemon to determine whether it uses Secure Enclave, Ledger, or mock backend
         const status = await signer.status()
-        signerMode = status.signerType === 'secure-enclave' ? 'secure-enclave' : 'ipc'
+        if (status.signerType === 'ledger') {
+          signerMode = 'ledger'
+        } else if (status.signerType === 'secure-enclave') {
+          signerMode = 'secure-enclave'
+        } else {
+          signerMode = 'ipc'
+        }
       } catch (err) {
         // Surface the failure clearly — do NOT silently fallback
         signer = createMockSigner()
@@ -70,17 +77,25 @@ export default function makiExtension(pi: ExtensionAPI) {
       }
     }
 
-    ctx = { config, signer, signerMode, policy, chainClient, spending, auditLog }
+    // Determine account mode: Ledger EOA demo vs smart account
+    const accountMode: AccountMode =
+      signerMode === 'ledger' && config.ledger?.accountMode === 'eoa-demo' ? 'eoa-demo' : 'smart-account'
+
+    ctx = { config, signer, signerMode, accountMode, policy, chainClient, spending, auditLog }
 
     if (extCtx.hasUI) {
       const signerLabel =
-        signerMode === 'secure-enclave'
-          ? 'Secure Enclave'
-          : signerMode === 'mock-fallback'
-            ? 'MOCK (daemon unavailable)'
-            : signerMode === 'mock'
-              ? 'MOCK'
-              : 'IPC'
+        signerMode === 'ledger'
+          ? accountMode === 'eoa-demo'
+            ? 'Ledger EOA'
+            : 'Ledger'
+          : signerMode === 'secure-enclave'
+            ? 'Secure Enclave'
+            : signerMode === 'mock-fallback'
+              ? 'MOCK (daemon unavailable)'
+              : signerMode === 'mock'
+                ? 'MOCK'
+                : 'IPC'
       extCtx.ui.setStatus('maki', `maki | ${chainName(config.chainId)} | ${signerLabel}`)
     }
 
@@ -111,4 +126,5 @@ export default function makiExtension(pi: ExtensionAPI) {
   registerAuditTools(pi, getCtx)
   registerAgentkitTools(pi, getCtx)
   registerWorldCommands(pi, getCtx)
+  registerClearSigningTools(pi)
 }

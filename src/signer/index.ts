@@ -14,4 +14,11 @@ export type {
   SignHashResult,
   ApproveActionParams,
   ApproveActionResult,
+  GetAddressResult,
+  SignPersonalMessageParams,
+  SignPersonalMessageResult,
+  SignTypedDataParams,
+  SignTypedDataResult,
+  SignTransactionParams,
+  SignTransactionResult,
 } from './types.js'

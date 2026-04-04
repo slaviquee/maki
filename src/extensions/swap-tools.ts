@@ -8,6 +8,19 @@ import { executeWriteAction } from '../wallet-core/execute.js'
 import { getUsdcSpendingCapAmount } from '../wallet-core/spending-cap.js'
 import { submitApproved } from './submit-helper.js'
 import type { MakiContext } from './context.js'
+import { getActiveAddress } from './context.js'
+import type { UserOpCall } from '../wallet-core/userop.js'
+
+export function ensureSwapSupportedInAccountMode(accountMode: MakiContext['accountMode'], calls: UserOpCall[]): void {
+  if (accountMode !== 'eoa-demo') return
+
+  if (calls.length !== 1) {
+    throw new Error(
+      `Ledger EOA demo mode supports single-call swaps only (got ${calls.length} calls). ` +
+        `This swap route needs batched approval or multiple on-chain steps, so use the smart-account flow instead.`,
+    )
+  }
+}
 
 export function registerSwapTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
   pi.registerTool({
@@ -39,8 +52,7 @@ export function registerSwapTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
 
       // Use Uniswap Trading API when configured, fall back to on-chain Quoter V2
       if (maki.config.uniswapApiKey) {
-        const swapper =
-          maki.config.smartAccountAddress ?? ('0x0000000000000000000000000000000000000000' as `0x${string}`)
+        const swapper = getActiveAddress(maki) ?? ('0x0000000000000000000000000000000000000000' as `0x${string}`)
         const apiQuote = await getApiSwapQuote(maki.config.uniswapApiKey, maki.config.chainId, swapper, {
           tokenIn,
           tokenOut,
@@ -112,6 +124,7 @@ export function registerSwapTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
       'The user should confirm the quote before executing.',
       'Default slippage is 50bps (0.5%). The user can specify a different value.',
       'This goes through the full write pipeline: policy → simulate → approve → submit.',
+      'Ledger EOA demo mode supports only single-call swap routes. Multi-call routes must use the smart-account flow.',
       'If the user already provided a complete exact-in swap request, do not ask for the amount again.',
       'Only ask follow-up questions when the amount, token pair, or chain is genuinely ambiguous.',
     ],
@@ -124,8 +137,9 @@ export function registerSwapTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
 
     async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
       const maki = getCtx()
-      const from = maki.config.smartAccountAddress
-      if (!from) throw new Error('No smart account configured.')
+
+      const from = getActiveAddress(maki)
+      if (!from) throw new Error('No account configured.')
 
       const tokenIn = findToken(maki.config.chainId, params.tokenIn)
       if (!tokenIn) throw new Error(`Token "${params.tokenIn}" not found in verified registry.`)
@@ -180,6 +194,8 @@ export function registerSwapTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
       }
 
       const description = `Swap ${params.amountIn} ${tokenIn.symbol} for ~${amountOut} ${tokenOut.symbol} (max slippage: ${slippageBps / 100}%) via ${swapSource}`
+
+      ensureSwapSupportedInAccountMode(maki.accountMode, calls)
 
       let result = await executeWriteAction(
         {

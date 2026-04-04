@@ -22,6 +22,15 @@ export function registerSignerTools(pi: ExtensionAPI, getCtx: () => MakiContext)
           ...(status.keyStorage ? [`Key storage: ${status.keyStorage}`] : []),
           ...(status.publicKey ? [`Public key: ${status.publicKey.slice(0, 20)}...`] : []),
         ]
+        // Ledger-specific status fields
+        if (status.signerType === 'ledger') {
+          lines.push(`Transport: ${status.transport ?? 'unknown'}`)
+          lines.push(`Device connected: ${status.deviceConnected ? 'yes' : 'no'}`)
+          lines.push(`Ethereum app open: ${status.ethereumAppOpen ? 'yes' : 'no'}`)
+          if (status.address) {
+            lines.push(`Ledger address: ${status.address}`)
+          }
+        }
         return {
           content: [{ type: 'text' as const, text: lines.join('\n') }],
           details: status,

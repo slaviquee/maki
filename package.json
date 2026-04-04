@@ -32,6 +32,10 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.19.12",
+    "@ledgerhq/context-module": "^1.15.0",
+    "@ledgerhq/device-management-kit": "^1.2.0",
+    "@ledgerhq/device-signer-kit-ethereum": "^1.13.0",
+    "@ledgerhq/device-transport-kit-speculos": "^1.2.0",
     "@mariozechner/pi-agent-core": "^0.65.0",
     "@mariozechner/pi-ai": "^0.65.0",
     "@mariozechner/pi-coding-agent": "^0.65.0",
@@ -46,6 +50,7 @@
     "ethers": "^6.16.0",
     "hono": "^4.12.10",
     "permissionless": "^0.3.0",
+    "rxjs": "7.8.2",
     "viem": "^2.47.0",
     "yaml": "^2.8.0",
     "zod": "^3.24.0"

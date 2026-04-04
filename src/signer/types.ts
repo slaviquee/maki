@@ -23,6 +23,11 @@ export type SignerMethod =
   | 'sign_hash'
   | 'sign_user_op'
   | 'approve_action'
+  // Ledger structured signing
+  | 'get_address'
+  | 'sign_personal_message'
+  | 'sign_typed_data'
+  | 'sign_transaction'
 
 // Method params and results
 export interface PingResult {
@@ -32,10 +37,15 @@ export interface PingResult {
 
 export interface StatusResult {
   ready: boolean
-  signerType: 'secure-enclave' | 'mock'
+  signerType: 'secure-enclave' | 'mock' | 'ledger'
   hasKey: boolean
   publicKey?: string
   keyStorage?: 'persistent' | 'ephemeral' | 'none'
+  // Ledger-specific fields
+  transport?: 'speculos'
+  deviceConnected?: boolean
+  ethereumAppOpen?: boolean
+  address?: `0x${string}`
 }
 
 export interface GetPublicKeyResult {
@@ -78,6 +88,59 @@ export interface CreateKeyResult {
   keyStorage?: 'persistent' | 'ephemeral' | 'none'
 }
 
+// Ledger structured signing params/results
+export interface GetAddressResult {
+  address: `0x${string}`
+  publicKey: string
+}
+
+export interface SignPersonalMessageParams {
+  message: `0x${string}`
+  actionSummary: string
+  actionClass: ActionClass
+}
+
+export interface SignPersonalMessageResult {
+  signature: `0x${string}`
+  r: `0x${string}`
+  s: `0x${string}`
+  v: number
+  approved: boolean
+}
+
+export interface SignTypedDataParams {
+  typedData: {
+    domain: Record<string, unknown>
+    types: Record<string, Array<{ name: string; type: string }>>
+    primaryType: string
+    message: Record<string, unknown>
+  }
+  actionSummary: string
+  actionClass: ActionClass
+}
+
+export interface SignTypedDataResult {
+  signature: `0x${string}`
+  r: `0x${string}`
+  s: `0x${string}`
+  v: number
+  approved: boolean
+}
+
+export interface SignTransactionParams {
+  serializedTransaction: `0x${string}`
+  actionSummary: string
+  actionClass: ActionClass
+}
+
+export interface SignTransactionResult {
+  signature: `0x${string}`
+  r: `0x${string}`
+  s: `0x${string}`
+  v: number
+  approved: boolean
+}
+
 // Client interface
 export interface SignerClient {
   connect(): Promise<void>
@@ -89,4 +152,9 @@ export interface SignerClient {
   createKey(): Promise<CreateKeyResult>
   signHash(params: SignHashParams): Promise<SignHashResult>
   approveAction(params: ApproveActionParams): Promise<ApproveActionResult>
+  // Ledger structured signing (optional — only available on Ledger backend)
+  getAddress?(): Promise<GetAddressResult>
+  signPersonalMessage?(params: SignPersonalMessageParams): Promise<SignPersonalMessageResult>
+  signTypedData?(params: SignTypedDataParams): Promise<SignTypedDataResult>
+  signTransaction?(params: SignTransactionParams): Promise<SignTransactionResult>
 }
