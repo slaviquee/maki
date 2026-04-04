@@ -37,6 +37,7 @@ function createMockContext(overrides: { signerMode?: SignerMode; bundlerApiKey?:
 
 const approvedResult: WriteResult = {
   status: 'approved',
+  actionClass: 1,
   summary: 'Test action summary',
 }
 

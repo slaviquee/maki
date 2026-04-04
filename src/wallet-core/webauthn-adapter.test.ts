@@ -53,7 +53,7 @@ describe('createWebAuthnAccount', () => {
 
     expect(signHash).toHaveBeenCalledWith({
       hash: expectedDigest,
-      actionSummary: 'Sign message',
+      actionSummary: 'Approve on-chain action',
       actionClass: 1,
     })
 
@@ -64,11 +64,38 @@ describe('createWebAuthnAccount', () => {
       '0xf61dbf33259a56705e77c7c9de87261c6750edfeea548527f73a8c4adf3550551ccfb6cf5b1b847252abb2f874f088493f4b6ce508885b6b860928d403c3eeca',
     )
   })
+
+  it('passes the real action summary through to the signer when provided', async () => {
+    const signHash = vi.fn().mockResolvedValue({
+      approved: true,
+      signature: ('0x' + '11'.repeat(32) + '22'.repeat(32)) as Hex,
+    })
+
+    const account = createWebAuthnAccount(
+      { signHash } as never,
+      '0x04f61dbf33259a56705e77c7c9de87261c6750edfeea548527f73a8c4adf3550551ccfb6cf5b1b847252abb2f874f088493f4b6ce508885b6b860928d403c3eeca',
+      'maki-enclave-key',
+      {
+        actionSummary: 'Approve transfer 0.1 ETH to 0xabc...',
+        actionClass: 2,
+      },
+    )
+
+    await account.sign({ hash: `0x${'22'.repeat(32)}` as Hex })
+
+    expect(signHash).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actionSummary: 'Approve transfer 0.1 ETH to 0xabc...',
+        actionClass: 2,
+      }),
+    )
+  })
 })
 
 describe('normalizeP256Signature', () => {
   it('normalizes high-s signatures into the low-s form expected by webauthn-sol', () => {
-    const highSSignature = '0x' + '11'.repeat(32) + 'ffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632550'
+    const highSSignature =
+      ('0x' + '11'.repeat(32) + 'ffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632550') as Hex
 
     expect(normalizeP256Signature(highSSignature)).toBe(
       '0x' + '11'.repeat(32) + '0000000000000000000000000000000000000000000000000000000000000001',

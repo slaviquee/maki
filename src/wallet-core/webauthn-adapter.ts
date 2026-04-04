@@ -8,7 +8,13 @@ import {
   type TypedDataDefinition,
 } from 'viem'
 import type { WebAuthnAccount, WebAuthnSignReturnType } from 'viem/account-abstraction'
+import type { ActionClass } from '../policy/types.js'
 import type { SignerClient } from '../signer/types.js'
+
+interface WebAuthnSigningRequest {
+  actionSummary: string
+  actionClass: ActionClass
+}
 
 /**
  * Bridges the maki signer daemon (Secure Enclave P-256) to viem's WebAuthnAccount interface.
@@ -17,7 +23,12 @@ import type { SignerClient } from '../signer/types.js'
  * This adapter constructs minimal but valid WebAuthn structures around
  * the raw Secure Enclave signature.
  */
-export function createWebAuthnAccount(signer: SignerClient, publicKeyHex: Hex, credentialId: string): WebAuthnAccount {
+export function createWebAuthnAccount(
+  signer: SignerClient,
+  publicKeyHex: Hex,
+  credentialId: string,
+  signingRequest?: WebAuthnSigningRequest,
+): WebAuthnAccount {
   const normalizedPublicKey = normalizeWebAuthnPublicKey(publicKeyHex)
 
   async function signWithWebAuthn(hash: Hex): Promise<WebAuthnSignReturnType> {
@@ -38,8 +49,8 @@ export function createWebAuthnAccount(signer: SignerClient, publicKeyHex: Hex, c
 
     const result = await signer.signHash({
       hash: webAuthnDigest,
-      actionSummary: 'Sign message',
-      actionClass: 1,
+      actionSummary: signingRequest?.actionSummary ?? 'Approve on-chain action',
+      actionClass: signingRequest?.actionClass ?? 1,
     })
 
     if (!result.approved) {

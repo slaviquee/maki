@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import LocalAuthentication
 import Security
 
 /// Real Secure Enclave P-256 signer.
@@ -89,7 +90,7 @@ final class SecureEnclaveSigner {
         }
     }
 
-    private func loadKeyFromKeychain(account: String) throws -> SecureEnclave.P256.Signing.PrivateKey {
+    private func loadKeyFromKeychainData(account: String) throws -> Data {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: keychainService,
@@ -110,6 +111,12 @@ final class SecureEnclaveSigner {
         guard let data = item as? Data else {
             throw SignerError.keyNotFound
         }
+
+        return data
+    }
+
+    private func loadKeyFromKeychain(account: String) throws -> SecureEnclave.P256.Signing.PrivateKey {
+        let data = try loadKeyFromKeychainData(account: account)
 
         do {
             return try SecureEnclave.P256.Signing.PrivateKey(dataRepresentation: data)
@@ -194,8 +201,18 @@ final class SecureEnclaveSigner {
 
     /// Sign a hash with Touch ID authorization.
     /// Returns the raw P-256 signature format expected by the wallet layer: r || s.
-    func sign(hash: Data) throws -> Data {
-        let key = try ensureKey()
+    func sign(hash: Data, reason: String? = nil) throws -> Data {
+        let key: SecureEnclave.P256.Signing.PrivateKey
+        if let reason {
+            let context = try authorizeContext(reason: reason)
+            let keyData = try loadKeyFromKeychainData(account: signingAccount)
+            key = try SecureEnclave.P256.Signing.PrivateKey(
+                dataRepresentation: keyData,
+                authenticationContext: context
+            )
+        } else {
+            key = try ensureKey()
+        }
 
         do {
             let signature: P256.Signing.ECDSASignature
@@ -216,6 +233,78 @@ final class SecureEnclaveSigner {
             }
             throw SignerError.signFailed(message)
         }
+    }
+
+    func authorize(reason: String) throws {
+        _ = try authorizeContext(reason: reason)
+    }
+
+    private func authorizeContext(reason: String) throws -> LAContext {
+        let context = LAContext()
+        context.localizedFallbackTitle = ""
+        context.touchIDAuthenticationAllowableReuseDuration = 10
+
+        var canEvaluateError: NSError?
+        guard context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &canEvaluateError) else {
+            throw SignerError.signFailed(canEvaluateError?.localizedDescription ?? "Biometric authentication unavailable")
+        }
+
+        let semaphore = DispatchSemaphore(value: 0)
+        var authSuccess = false
+        var authError: Error?
+        context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: compactReason(reason)) {
+            success,
+            error in
+            authSuccess = success
+            authError = error
+            semaphore.signal()
+        }
+        semaphore.wait()
+
+        guard authSuccess else {
+            if let laError = authError as? LAError {
+                switch laError.code {
+                case .userCancel, .systemCancel, .appCancel, .authenticationFailed:
+                    throw SignerError.userCancelled
+                default:
+                    break
+                }
+            }
+
+            let message = authError?.localizedDescription ?? "Authentication failed"
+            if message.localizedCaseInsensitiveContains("cancel") {
+                throw SignerError.userCancelled
+            }
+            throw SignerError.signFailed(message)
+        }
+
+        return context
+    }
+
+    private func compactReason(_ summary: String) -> String {
+        let interestingLines = summary
+            .split(separator: "\n")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter {
+                !$0.isEmpty &&
+                    !$0.hasPrefix("---") &&
+                    !$0.hasPrefix("Risk class:") &&
+                    !$0.hasPrefix("Steps:")
+            }
+
+        let compact = interestingLines.prefix(4).joined(separator: " • ")
+        if compact.isEmpty {
+            return "Approve on-chain action"
+        }
+
+        let prefix = "Approve: "
+        let maxLength = 140
+        if prefix.count + compact.count <= maxLength {
+            return prefix + compact
+        }
+
+        let available = maxLength - prefix.count - 1
+        return prefix + compact.prefix(max(available, 0)) + "…"
     }
 
     // MARK: - Status

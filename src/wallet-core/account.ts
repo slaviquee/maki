@@ -1,6 +1,7 @@
 import { type PublicClient, type Hex, getAddress } from 'viem'
 import { toCoinbaseSmartAccount } from 'viem/account-abstraction'
 import type { SignerClient } from '../signer/types.js'
+import type { ActionClass } from '../policy/types.js'
 import { createWebAuthnAccount } from './webauthn-adapter.js'
 
 export interface SmartAccountInfo {
@@ -11,19 +12,28 @@ export interface SmartAccountInfo {
   ownerY: Hex
 }
 
+export interface SmartAccountSigningRequest {
+  actionSummary: string
+  actionClass: ActionClass
+}
+
 /**
  * Creates a Coinbase Smart Wallet instance backed by the maki signer daemon.
  *
  * The wallet uses P-256 (secp256r1) signatures from Apple Secure Enclave,
  * wrapped in WebAuthn format for on-chain verification.
  */
-export async function createSmartAccount(client: PublicClient, signer: SignerClient, opts?: { nonce?: bigint }) {
+export async function createSmartAccount(
+  client: PublicClient,
+  signer: SignerClient,
+  opts?: { nonce?: bigint; signingRequest?: SmartAccountSigningRequest },
+) {
   // Get P-256 public key from signer
   const keyResult = await signer.getPublicKey()
   const publicKeyHex = keyResult.publicKey as Hex
 
   // Create WebAuthn account adapter
-  const webAuthnAccount = createWebAuthnAccount(signer, publicKeyHex, 'maki-enclave-key')
+  const webAuthnAccount = createWebAuthnAccount(signer, publicKeyHex, 'maki-enclave-key', opts?.signingRequest)
 
   // Create Coinbase Smart Account
   const account = await toCoinbaseSmartAccount({

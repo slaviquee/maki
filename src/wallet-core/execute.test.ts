@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { executeWriteAction, renderActionSummary, type WriteAction } from './execute.js'
-import type { SignerClient } from '../signer/types.js'
 import type { PolicyStore } from '../policy/store.js'
 import type { SpendingTracker } from '../policy/spending-tracker.js'
 import type { AuditLog } from './audit-log.js'
@@ -9,22 +8,6 @@ import { defaultPolicy } from '../policy/defaults.js'
 
 const MOCK_FROM = '0x1234567890abcdef1234567890abcdef12345678' as `0x${string}`
 const MOCK_TO = '0xabcdefabcdefabcdefabcdefabcdefabcdefabcd' as `0x${string}`
-
-function createMockSigner(): SignerClient {
-  return {
-    connect: vi.fn().mockResolvedValue(undefined),
-    disconnect: vi.fn(),
-    ping: vi.fn().mockResolvedValue({ pong: true, version: '0.1.0-test' }),
-    status: vi.fn().mockResolvedValue({ ready: true, signerType: 'mock', hasKey: true }),
-    getPublicKey: vi
-      .fn()
-      .mockResolvedValue({ publicKey: '0x04' + 'ab'.repeat(32) + 'cd'.repeat(32), address: MOCK_FROM }),
-    getPublicKeyCoordinates: vi.fn().mockResolvedValue({ x: '0x' + 'ab'.repeat(32), y: '0x' + 'cd'.repeat(32) }),
-    createKey: vi.fn().mockResolvedValue({ publicKey: '0x04', x: '0x', y: '0x', created: true }),
-    signHash: vi.fn().mockResolvedValue({ signature: ('0x' + 'ff'.repeat(64)) as `0x${string}`, approved: true }),
-    approveAction: vi.fn().mockResolvedValue({ approved: true }),
-  }
-}
 
 function createMockClient(): PublicClient {
   return {
@@ -98,14 +81,12 @@ describe('renderActionSummary', () => {
 })
 
 describe('executeWriteAction', () => {
-  let signer: SignerClient
   let client: PublicClient
   let policy: PolicyStore
   let spending: SpendingTracker
   let auditLog: AuditLog
 
   beforeEach(() => {
-    signer = createMockSigner()
     client = createMockClient()
     policy = createMockPolicyStore()
     spending = createMockSpending()
@@ -114,26 +95,21 @@ describe('executeWriteAction', () => {
 
   it('approves a valid transfer within limits', async () => {
     const action = createAction()
-    const result = await executeWriteAction(action, client, signer, policy, MOCK_FROM, spending, auditLog)
+    const result = await executeWriteAction(action, client, policy, MOCK_FROM, spending, auditLog)
     expect(result.status).toBe('approved')
+    expect(result.actionClass).toBe(1)
     expect(result.summary).toContain('transfer')
   })
 
-  it('calls signHash for touch_id approval', async () => {
+  it('does not record spending before the real signature/submission step', async () => {
     const action = createAction()
-    await executeWriteAction(action, client, signer, policy, MOCK_FROM, spending, auditLog)
-    expect(signer.signHash).toHaveBeenCalledOnce()
-  })
-
-  it('records spending after approval', async () => {
-    const action = createAction()
-    await executeWriteAction(action, client, signer, policy, MOCK_FROM, spending, auditLog)
-    expect(spending.record).toHaveBeenCalledWith('transfer', 2)
+    await executeWriteAction(action, client, policy, MOCK_FROM, spending, auditLog)
+    expect(spending.record).not.toHaveBeenCalled()
   })
 
   it('logs write_approved to audit log', async () => {
     const action = createAction()
-    await executeWriteAction(action, client, signer, policy, MOCK_FROM, spending, auditLog)
+    await executeWriteAction(action, client, policy, MOCK_FROM, spending, auditLog)
     expect(auditLog.log).toHaveBeenCalledWith('write_approved', expect.any(String), expect.any(Object))
   })
 
@@ -141,34 +117,23 @@ describe('executeWriteAction', () => {
     const action = createAction({
       policyDetails: { type: 'transfer', token: 'USDC', amountUsdc: 200 }, // exceeds 100 USDC per-tx
     })
-    const result = await executeWriteAction(action, client, signer, policy, MOCK_FROM, spending, auditLog)
+    const result = await executeWriteAction(action, client, policy, MOCK_FROM, spending, auditLog)
     expect(result.status).toBe('denied')
     expect(result.error).toContain('per-tx limit')
-  })
-
-  it('returns rejected when user denies signing', async () => {
-    ;(signer.signHash as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-      signature: '0x' as `0x${string}`,
-      approved: false,
-    })
-    const action = createAction()
-    const result = await executeWriteAction(action, client, signer, policy, MOCK_FROM, spending, auditLog)
-    expect(result.status).toBe('rejected')
   })
 
   it('returns simulation_failed when simulation fails', async () => {
     ;(client.call as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('execution reverted'))
     const action = createAction()
-    const result = await executeWriteAction(action, client, signer, policy, MOCK_FROM, spending, auditLog)
+    const result = await executeWriteAction(action, client, policy, MOCK_FROM, spending, auditLog)
     expect(result.status).toBe('simulation_failed')
     expect(result.error).toContain('execution reverted')
   })
 
-  it('skips signHash for auto-approval on relaxed profile', async () => {
+  it('still returns approved for auto-approval on relaxed profile', async () => {
     policy = createMockPolicyStore('relaxed')
     const action = createAction()
-    const result = await executeWriteAction(action, client, signer, policy, MOCK_FROM, spending, auditLog)
+    const result = await executeWriteAction(action, client, policy, MOCK_FROM, spending, auditLog)
     expect(result.status).toBe('approved')
-    expect(signer.signHash).not.toHaveBeenCalled()
   })
 })

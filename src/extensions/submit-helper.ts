@@ -31,17 +31,47 @@ export async function submitApproved(
     }
   }
 
-  const account = await createSmartAccount(maki.chainClient, maki.signer)
-
-  maki.auditLog.log('write_submitted', result.summary)
-
-  const submission = await submitUserOperation(account, calls, {
-    chainId: maki.config.chainId,
-    bundlerApiKey: maki.config.bundlerApiKey,
-    rpcUrl: maki.config.rpcUrl,
+  const account = await createSmartAccount(maki.chainClient, maki.signer, {
+    signingRequest: {
+      actionSummary: result.summary,
+      actionClass: result.actionClass,
+    },
   })
 
+  let submission
+  try {
+    submission = await submitUserOperation(account, calls, {
+      chainId: maki.config.chainId,
+      bundlerApiKey: maki.config.bundlerApiKey,
+      rpcUrl: maki.config.rpcUrl,
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+
+    if (message.includes('Signing rejected by user') || message.includes('User cancelled')) {
+      maki.auditLog.log('user_rejected', result.summary)
+      return {
+        ...result,
+        status: 'rejected',
+        error: 'User rejected the action',
+      }
+    }
+
+    maki.auditLog.log('write_failed', message)
+    return {
+      ...result,
+      status: 'error',
+      error: `Submission failed: ${message}`,
+    }
+  }
+
   if (submission.status === 'confirmed') {
+    maki.auditLog.log('write_submitted', result.summary, {
+      userOpHash: submission.userOpHash,
+    })
+    if (result.spendType && result.amountUsdc !== undefined) {
+      maki.spending.record(result.spendType, result.amountUsdc)
+    }
     maki.auditLog.log('write_confirmed', `tx: ${submission.txHash}`, {
       userOpHash: submission.userOpHash,
       txHash: submission.txHash,
@@ -54,6 +84,9 @@ export async function submitApproved(
     }
   }
 
+  maki.auditLog.log('write_submitted', result.summary, {
+    userOpHash: submission.userOpHash,
+  })
   maki.auditLog.log('write_failed', submission.error ?? 'Unknown', {
     userOpHash: submission.userOpHash,
     txHash: submission.txHash,

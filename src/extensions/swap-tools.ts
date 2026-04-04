@@ -124,7 +124,6 @@ export function registerSwapTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
           },
         },
         maki.chainClient,
-        maki.signer,
         maki.policy,
         from,
         maki.spending,

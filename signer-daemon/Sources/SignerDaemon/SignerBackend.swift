@@ -27,7 +27,7 @@ extension SecureEnclaveSigner: SignerBackend {
         }
 
         do {
-            let signature = try sign(hash: hashData)
+            let signature = try sign(hash: hashData, reason: params.actionSummary)
             let sigHex = "0x" + signature.map { String(format: "%02x", $0) }.joined()
             return SignHashResult(signature: sigHex, approved: true)
         } catch SecureEnclaveSigner.SignerError.userCancelled {
@@ -36,11 +36,8 @@ extension SecureEnclaveSigner: SignerBackend {
     }
 
     func approveAction(_ params: ApproveActionParams) -> ApproveActionResult {
-        // For Secure Enclave, approveAction uses the same Touch ID gate as signHash.
-        // We sign a hash of the summary to force biometric authentication.
-        let summaryData = params.summary.data(using: .utf8) ?? Data()
         do {
-            _ = try sign(hash: summaryData)
+            try authorize(reason: params.summary)
             return ApproveActionResult(approved: true, reason: nil)
         } catch SecureEnclaveSigner.SignerError.userCancelled {
             return ApproveActionResult(approved: false, reason: "User cancelled")

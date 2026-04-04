@@ -1,10 +1,9 @@
-import { formatEther, type PublicClient, type Hex, keccak256, toBytes } from 'viem'
-import type { SignerClient } from '../signer/types.js'
+import { formatEther, type PublicClient, type Hex } from 'viem'
 import type { PolicyStore } from '../policy/store.js'
 import type { SpendingTracker } from '../policy/spending-tracker.js'
 import type { AuditLog } from './audit-log.js'
 import { checkAction } from '../policy/engine.js'
-import type { ActionDetails } from '../policy/types.js'
+import type { ActionClass, ActionDetails } from '../policy/types.js'
 import { simulateCallSequence } from './simulation.js'
 import type { UserOpPlan } from './userop.js'
 
@@ -15,6 +14,9 @@ export interface WriteAction {
 
 export interface WriteResult {
   status: 'approved' | 'submitted' | 'confirmed' | 'denied' | 'simulation_failed' | 'rejected' | 'error'
+  actionClass: ActionClass
+  amountUsdc?: number
+  spendType?: 'transfer' | 'swap'
   summary: string
   error?: string
   userOpHash?: Hex
@@ -66,13 +68,12 @@ export function renderActionSummary(action: WriteAction): string {
  * 1. Policy check (with spending tracker for daily limits)
  * 2. Simulate (skip approval-only calls in multi-step plans)
  * 3. Render deterministic summary
- * 4. Request Touch ID approval via signHash (not the no-op approveAction)
+ * 4. Return an approval-ready action for submission/signing
  * 5. Log to audit log
  */
 export async function executeWriteAction(
   action: WriteAction,
   client: PublicClient,
-  signer: SignerClient,
   policy: PolicyStore,
   from: `0x${string}`,
   spending?: SpendingTracker,
@@ -88,6 +89,7 @@ export async function executeWriteAction(
     auditLog?.log('policy_denied', policyResult.reason, policyDetails as unknown as Record<string, unknown>)
     return {
       status: 'denied',
+      actionClass: plan.actionClass,
       summary,
       error: `Policy denied: ${policyResult.reason}`,
     }
@@ -107,47 +109,19 @@ export async function executeWriteAction(
     )
     return {
       status: 'simulation_failed',
+      actionClass: plan.actionClass,
       summary,
       error: `Simulation failed: ${simResult.error}`,
     }
-  }
-
-  // 3. Request approval via signHash (real Touch ID, not the no-op approveAction)
-  if (policyResult.approvalMode === 'touch_id') {
-    // Hash the summary deterministically for the signer to approve
-    const approvalHash = keccak256(toBytes(summary))
-
-    const signResult = await signer.signHash({
-      hash: approvalHash as `0x${string}`,
-      actionSummary: summary,
-      actionClass: plan.actionClass,
-    })
-
-    if (!signResult.approved) {
-      auditLog?.log('user_rejected', summary, policyDetails as unknown as Record<string, unknown>)
-      return {
-        status: 'rejected',
-        summary,
-        error: 'User rejected the action',
-      }
-    }
-  }
-
-  // 4. Record spending at approval time. This is conservative — it counts
-  // toward daily limits even if submission later fails. The alternative
-  // (recording after confirmation) would leave a window where approved-but-
-  // unsubmitted actions bypass daily caps. Over-counting is safer than under-
-  // counting. When the submission/receipt pipeline is added, this should move
-  // to post-confirmation and failed submissions should refund the allowance.
-  if (spending && policyDetails.amountUsdc !== undefined) {
-    const spendType = policyDetails.type === 'swap' ? 'swap' : 'transfer'
-    spending.record(spendType, policyDetails.amountUsdc)
   }
 
   auditLog?.log('write_approved', summary, policyDetails as unknown as Record<string, unknown>)
 
   return {
     status: 'approved',
+    actionClass: plan.actionClass,
+    amountUsdc: policyDetails.amountUsdc,
+    spendType: policyDetails.type === 'swap' ? 'swap' : policyDetails.type === 'transfer' ? 'transfer' : undefined,
     summary,
   }
 }
