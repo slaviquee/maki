@@ -1,7 +1,7 @@
 {
   "name": "maki",
   "version": "0.1.0",
-  "description": "Terminal AI agent for on-chain life — swaps, transfers, DeFi, ENS — with private keys locked in Apple Secure Enclave",
+  "description": "Hardware-signed onchain agent for everyday DeFi with Secure Enclave and Ledger, deterministic execution, and human-backed verification",
   "type": "module",
   "files": [
     "dist",
