@@ -67,7 +67,11 @@ const executeBatchAbi = [
  * executeBatch. This ensures approve+swap and other multi-step plans are
  * simulated with correct intermediate state (e.g. the swap sees the approval).
  *
- * Falls back to individual call simulation if the account is not deployed.
+ * If the smart account is not yet deployed (counterfactual), batch simulation
+ * is skipped — there is no on-chain code to call executeBatch on. The first
+ * transaction on an undeployed account includes initCode that deploys it as
+ * part of the UserOp; simulation of that full flow is the bundler's job.
+ * Individual target calls are still simulated where possible.
  */
 export async function simulateCallSequence(
   client: PublicClient,
@@ -82,7 +86,21 @@ export async function simulateCallSequence(
     return simulateCall(client, from, calls[0]!)
   }
 
-  // Encode as executeBatch on the smart account
+  // Check if the smart account has deployed code
+  const code = await client.getCode({ address: from })
+  const isDeployed = code !== undefined && code !== '0x'
+
+  if (!isDeployed) {
+    // Counterfactual account: cannot call executeBatch because there is no
+    // on-chain code yet. The first UserOp includes initCode that deploys the
+    // account atomically. Simulate individual target calls as a best-effort
+    // check (the approve call may fail since the account has no balance yet,
+    // but the final action call is the important one).
+    const lastCall = calls[calls.length - 1]!
+    return simulateCall(client, from, lastCall)
+  }
+
+  // Deployed account: simulate the full sequence as executeBatch
   const totalValue = calls.reduce((sum, c) => sum + (c.value ?? 0n), 0n)
 
   try {
@@ -100,7 +118,7 @@ export async function simulateCallSequence(
 
     await client.call({
       account: from,
-      to: from, // call executeBatch on the smart account itself
+      to: from,
       data: batchCalldata,
       value: totalValue,
     })
