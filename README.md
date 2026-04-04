@@ -44,6 +44,8 @@ npm install -g maki
 
 Homebrew is the target distribution from the original spec. For now, the clean-machine path is a global npm install.
 
+On Apple Silicon Macs, the npm package includes a prebuilt native signer. If no compatible bundled signer is available, Maki falls back to building the signer locally.
+
 ## First Run
 
 Open one terminal for the signer:
@@ -159,7 +161,7 @@ These controls are enforced locally before signing. They are not on-chain smart-
 
 - Global Pi session/auth state for Maki lives in `~/.maki/agent/`
 - Wallet config, policy, socket, and DB live in `~/.maki/`
-- The native signer daemon is built on demand the first time you run `maki signer start`
+- On Apple Silicon Macs, `maki signer start` uses the bundled native signer first and only falls back to a local Swift build if needed
 - The first real smart-account write flow still requires a funded smart account and a bundler API key
 - Ledger EOA is available for a hardware-backed direct-signing path
 - World AgentKit setup can be checked with `maki world status` and `maki world register`

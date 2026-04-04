@@ -6,7 +6,10 @@
   "files": [
     "dist",
     "src/skills",
-    "signer-daemon",
+    "signer-daemon/bin",
+    "signer-daemon/Sources",
+    "signer-daemon/Package.swift",
+    "signer-daemon/MakiSigner.entitlements",
     "scripts",
     "docs/first-transaction.md",
     "README.md"

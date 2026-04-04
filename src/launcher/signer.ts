@@ -10,7 +10,13 @@ function normalizeLedgerTransport(_value: unknown): LedgerConfig['transport'] {
 }
 
 function signerBinaryCandidates(packageRoot: string): string[] {
+  const packaged = [
+    join(packageRoot, 'signer-daemon', 'bin', `maki-signer-${process.platform}-${process.arch}`),
+    join(packageRoot, 'signer-daemon', 'bin', 'maki-signer'),
+  ]
+
   return [
+    ...packaged,
     join(packageRoot, 'signer-daemon', '.build', 'arm64-apple-macosx', 'debug', 'maki-signer'),
     join(packageRoot, 'signer-daemon', '.build', 'x86_64-apple-macosx', 'debug', 'maki-signer'),
     join(packageRoot, 'signer-daemon', '.build', 'debug', 'maki-signer'),
@@ -117,7 +123,13 @@ export async function runSignerCommand(args: string[], packageRoot: string): Pro
 
     const child = spawn(
       process.execPath,
-      ['--import', 'tsx', join(packageRoot, 'src', 'signer', 'ledger-server-main.ts'), paths.socket, JSON.stringify(ledgerConfig)],
+      [
+        '--import',
+        'tsx',
+        join(packageRoot, 'src', 'signer', 'ledger-server-main.ts'),
+        paths.socket,
+        JSON.stringify(ledgerConfig),
+      ],
       {
         stdio: 'inherit',
         cwd: packageRoot,
