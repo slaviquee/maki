@@ -11,7 +11,7 @@ const PolicySchema = z.object({
   version: z.literal(1),
   profile: z.enum(['locked', 'balanced', 'relaxed', 'custom']),
   account: z.object({
-    chain: z.enum(['base', 'base-sepolia']),
+    chain: z.enum(['base', 'base-sepolia', 'ethereum-sepolia']),
     recovery_address: z.string().startsWith('0x').optional(),
   }),
   approval: z.object({

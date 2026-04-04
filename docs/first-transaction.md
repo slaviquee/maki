@@ -8,6 +8,7 @@ Step-by-step runbook for making your first real transaction from Maki on Base Se
 - Node.js >= 20.6.0
 - Xcode command-line tools (for Swift signer daemon build)
 - A Pimlico API key (free tier at [pimlico.io](https://pimlico.io))
+- A Uniswap API key (free at [developers.uniswap.org](https://developers.uniswap.org/)) — for optimized swap routing
 - Small amount of Base Sepolia ETH (faucet: [faucet.base.org](https://www.base.org/faucet) or similar)
 
 ## 1. Install Maki
@@ -56,11 +57,13 @@ chainId: 84532
 rpcUrl: 'https://sepolia.base.org'
 signerType: secure-enclave
 bundlerApiKey: YOUR_PIMLICO_API_KEY
+uniswapApiKey: YOUR_UNISWAP_API_KEY
 ```
 
 Required fields for a real transaction:
 - `signerType: secure-enclave` (not `mock`)
 - `bundlerApiKey`: your Pimlico API key (get one at pimlico.io, free tier includes Base Sepolia)
+- `uniswapApiKey`: your Uniswap API key (get one at developers.uniswap.org) — enables optimized swap routing via the Uniswap Trading API
 
 ## 5. Create your smart account
 

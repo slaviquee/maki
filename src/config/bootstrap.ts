@@ -74,6 +74,7 @@ export function bootstrap(): MakiConfig {
     setupComplete: inferSetupComplete(raw),
     smartAccountAddress: raw['smartAccountAddress'] as `0x${string}` | undefined,
     bundlerApiKey: (raw['bundlerApiKey'] as string) ?? undefined,
+    uniswapApiKey: (raw['uniswapApiKey'] as string) ?? undefined,
   }
 }
 

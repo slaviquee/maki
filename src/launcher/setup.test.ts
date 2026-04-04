@@ -16,5 +16,6 @@ describe('setup helpers', () => {
   it('returns default RPC urls for supported chains', () => {
     expect(defaultRpcUrl(84532)).toBe('https://sepolia.base.org')
     expect(defaultRpcUrl(8453)).toBe('https://mainnet.base.org')
+    expect(defaultRpcUrl(11155111)).toBe('https://ethereum-sepolia-rpc.publicnode.com')
   })
 })

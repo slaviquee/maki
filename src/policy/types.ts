@@ -46,7 +46,7 @@ export interface AutomationConfig {
 }
 
 export interface AccountConfig {
-  chain: 'base' | 'base-sepolia'
+  chain: 'base' | 'base-sepolia' | 'ethereum-sepolia'
   recovery_address?: `0x${string}`
 }
 

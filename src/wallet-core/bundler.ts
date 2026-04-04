@@ -7,6 +7,7 @@ import { CHAINS } from './chains.js'
 const PIMLICO_CHAIN_SLUGS: Record<SupportedChainId, string> = {
   8453: 'base',
   84532: 'base-sepolia',
+  11155111: 'sepolia',
 }
 
 export interface BundlerConfig {

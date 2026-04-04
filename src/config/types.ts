@@ -1,4 +1,4 @@
-export type SupportedChainId = 8453 | 84532
+export type SupportedChainId = 8453 | 84532 | 11155111
 
 export interface MakiConfig {
   chainId: SupportedChainId
@@ -11,4 +11,5 @@ export interface MakiConfig {
   setupComplete: boolean
   smartAccountAddress?: `0x${string}`
   bundlerApiKey?: string
+  uniswapApiKey?: string
 }

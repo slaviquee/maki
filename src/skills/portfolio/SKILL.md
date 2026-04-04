@@ -7,7 +7,7 @@ description: Portfolio reading and balance checking. Use when the user asks abou
 
 ## Reading Balances
 
-Use `get_balances` to show the user's ETH and token balances on Base.
+Use `get_balances` to show the user's ETH and token balances on the currently configured chain.
 
 ## Checking Allowances
 
@@ -17,6 +17,6 @@ Use `get_allowances` to show active token approvals and which protocols can spen
 
 - Always show balances with token symbols and formatted amounts
 - If balances are zero, suggest the user fund their wallet
-- For testnet (Base Sepolia), suggest using a faucet
+- For testnets (Base Sepolia or Ethereum Sepolia), suggest using a faucet
 - When showing multiple tokens, list them clearly
 - Use `wallet_status` first if unsure whether a wallet is configured

@@ -22,7 +22,40 @@ export function inferSetupComplete(raw: Record<string, unknown>): boolean {
 }
 
 export function defaultRpcUrl(chainId: SupportedChainId): string {
-  return chainId === 8453 ? 'https://mainnet.base.org' : 'https://sepolia.base.org'
+  switch (chainId) {
+    case 8453:
+      return 'https://mainnet.base.org'
+    case 84532:
+      return 'https://sepolia.base.org'
+    case 11155111:
+      return 'https://ethereum-sepolia-rpc.publicnode.com'
+  }
+}
+
+function policyChainName(chainId: SupportedChainId): Policy['account']['chain'] {
+  switch (chainId) {
+    case 8453:
+      return 'base'
+    case 84532:
+      return 'base-sepolia'
+    case 11155111:
+      return 'ethereum-sepolia'
+  }
+}
+
+function chainLabel(chainId: SupportedChainId): string {
+  switch (chainId) {
+    case 8453:
+      return 'Base Mainnet'
+    case 84532:
+      return 'Base Sepolia'
+    case 11155111:
+      return 'Ethereum Sepolia'
+  }
+}
+
+function chainAllowlistName(chainId: SupportedChainId): string {
+  return chainId === 11155111 ? 'ethereum' : 'base'
 }
 
 function loadRawConfig(): Record<string, unknown> {
@@ -53,7 +86,8 @@ function writeSetupPolicy(profile: SecurityProfile, chainId: SupportedChainId, r
   const existing = loadCurrentPolicy()
   const policy = defaultPolicy(profile)
 
-  policy.account.chain = chainId === 8453 ? 'base' : 'base-sepolia'
+  policy.account.chain = policyChainName(chainId)
+  policy.allowlists.chains = [chainAllowlistName(chainId)]
 
   if (existing?.allowlists) {
     policy.allowlists = existing.allowlists
@@ -71,7 +105,14 @@ function writeSetupPolicy(profile: SecurityProfile, chainId: SupportedChainId, r
 }
 
 function parseChainChoice(value: string): SupportedChainId {
-  return value.trim() === '2' ? 8453 : 84532
+  switch (value.trim()) {
+    case '2':
+      return 8453
+    case '3':
+      return 11155111
+    default:
+      return 84532
+  }
 }
 
 function parseProfileChoice(value: string): SecurityProfile {
@@ -128,12 +169,17 @@ export async function runSetupWizard(packageRoot: string, launchAfterSetup: bool
   output.write('This will prepare ~/.maki for interactive wallet use.\n')
   output.write('Model login still happens inside the chat shell via /login.\n\n')
 
-  const chainChoice = await ask('Network: [1] Base Sepolia (recommended), [2] Base Mainnet. Default 1: ')
+  const chainChoice = await ask(
+    'Network: [1] Base Sepolia (recommended), [2] Base Mainnet, [3] Ethereum Sepolia. Default 1: ',
+  )
   const chainId = parseChainChoice(chainChoice)
   const signerChoice = await ask('Signer backend: [1] Secure Enclave (recommended), [2] Mock. Default 1: ')
   const signerType = parseSignerChoice(signerChoice)
   const bundlerApiKey = normalizeOptional(
     await ask('Pimlico bundler API key (optional now, needed for live writes). Leave blank to skip: '),
+  )
+  const uniswapApiKey = normalizeOptional(
+    await ask('Uniswap API key (optional, enables optimized swap routing via Trading API). Leave blank to skip: '),
   )
   const recoveryAddress = normalizeRecoveryAddress(
     await ask('Recovery address (optional, 0x... format). Leave blank to skip: '),
@@ -153,6 +199,12 @@ export async function runSetupWizard(packageRoot: string, launchAfterSetup: bool
     delete raw['bundlerApiKey']
   }
 
+  if (uniswapApiKey) {
+    raw['uniswapApiKey'] = uniswapApiKey
+  } else {
+    delete raw['uniswapApiKey']
+  }
+
   writeRawConfig(raw)
   writeSetupPolicy(profile, chainId, recoveryAddress)
 
@@ -167,7 +219,7 @@ export async function runSetupWizard(packageRoot: string, launchAfterSetup: bool
   }
 
   output.write('\nSetup saved.\n')
-  output.write(`Network: ${chainId === 8453 ? 'Base Mainnet' : 'Base Sepolia'}\n`)
+  output.write(`Network: ${chainLabel(chainId)}\n`)
   output.write(`Signer: ${signerType}\n`)
   output.write(`Profile: ${profile}\n`)
   output.write('\nNext steps:\n')

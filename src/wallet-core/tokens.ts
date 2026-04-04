@@ -3,6 +3,13 @@ import type { TokenInfo } from './types.js'
 
 const BASE_TOKENS: TokenInfo[] = [
   {
+    symbol: 'ETH',
+    name: 'Ether',
+    decimals: 18,
+    address: '0x0000000000000000000000000000000000000000',
+    chainId: 8453,
+  },
+  {
     symbol: 'USDC',
     name: 'USD Coin',
     decimals: 6,
@@ -34,17 +41,56 @@ const BASE_TOKENS: TokenInfo[] = [
 
 const BASE_SEPOLIA_TOKENS: TokenInfo[] = [
   {
+    symbol: 'ETH',
+    name: 'Ether',
+    decimals: 18,
+    address: '0x0000000000000000000000000000000000000000',
+    chainId: 84532,
+  },
+  {
     symbol: 'USDC',
     name: 'USD Coin',
     decimals: 6,
     address: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
     chainId: 84532,
   },
+  {
+    symbol: 'WETH',
+    name: 'Wrapped Ether',
+    decimals: 18,
+    address: '0x4200000000000000000000000000000000000006',
+    chainId: 84532,
+  },
+]
+
+const ETHEREUM_SEPOLIA_TOKENS: TokenInfo[] = [
+  {
+    symbol: 'ETH',
+    name: 'Ether',
+    decimals: 18,
+    address: '0x0000000000000000000000000000000000000000',
+    chainId: 11155111,
+  },
+  {
+    symbol: 'USDC',
+    name: 'USD Coin',
+    decimals: 6,
+    address: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
+    chainId: 11155111,
+  },
+  {
+    symbol: 'WETH',
+    name: 'Wrapped Ether',
+    decimals: 18,
+    address: '0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14',
+    chainId: 11155111,
+  },
 ]
 
 const REGISTRY: Record<SupportedChainId, TokenInfo[]> = {
   8453: BASE_TOKENS,
   84532: BASE_SEPOLIA_TOKENS,
+  11155111: ETHEREUM_SEPOLIA_TOKENS,
 }
 
 export function getTokenRegistry(chainId: SupportedChainId): TokenInfo[] {

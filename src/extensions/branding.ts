@@ -12,6 +12,8 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const SALMON_HEX = '#e8735a'
+const PANEL_GRAY = '#2f3036'
+const PANEL_GRAY_ALT = '#34353c'
 const SALMON_FG = '\u001b[38;2;232;115;90m'
 const SALMON_BG = '\u001b[48;2;232;115;90m'
 const RICE_BG = '\u001b[48;2;240;235;224m'
@@ -90,12 +92,12 @@ function createBrandedTheme(baseTheme: Theme): PiTheme {
   fgColors['bashMode'] = SALMON_HEX
 
   const bgColors = {
-    selectedBg: resolveThemeValue(spec, spec.colors['selectedBg'] ?? ''),
-    userMessageBg: resolveThemeValue(spec, spec.colors['userMessageBg'] ?? ''),
-    customMessageBg: resolveThemeValue(spec, spec.colors['customMessageBg'] ?? ''),
-    toolPendingBg: resolveThemeValue(spec, spec.colors['toolPendingBg'] ?? ''),
-    toolSuccessBg: resolveThemeValue(spec, spec.colors['toolSuccessBg'] ?? ''),
-    toolErrorBg: resolveThemeValue(spec, spec.colors['toolErrorBg'] ?? ''),
+    selectedBg: PANEL_GRAY_ALT,
+    userMessageBg: PANEL_GRAY_ALT,
+    customMessageBg: PANEL_GRAY,
+    toolPendingBg: PANEL_GRAY,
+    toolSuccessBg: PANEL_GRAY,
+    toolErrorBg: PANEL_GRAY,
   }
 
   return new PiTheme(fgColors, bgColors, baseTheme.getColorMode(), { name: BRAND_THEME_NAME })

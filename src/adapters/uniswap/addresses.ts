@@ -18,7 +18,7 @@ const BASE_SEPOLIA_ADDRESSES: UniswapAddresses = {
   weth: '0x4200000000000000000000000000000000000006',
 }
 
-const ADDRESSES: Record<SupportedChainId, UniswapAddresses> = {
+const ADDRESSES: Partial<Record<SupportedChainId, UniswapAddresses>> = {
   8453: BASE_ADDRESSES,
   84532: BASE_SEPOLIA_ADDRESSES,
 }

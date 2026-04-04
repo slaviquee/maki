@@ -13,9 +13,16 @@ const KNOWN_SPENDERS_BASE: Record<string, string> = {
 // Known spender addresses on Base Sepolia
 const KNOWN_SPENDERS_BASE_SEPOLIA: Record<string, string> = {}
 
+// Known spender addresses on Ethereum Sepolia
+const KNOWN_SPENDERS_ETHEREUM_SEPOLIA: Record<string, string> = {
+  '0x02E5be68D46DAc0B524905bfF209cf47EE6dB2a9': 'Uniswap Universal Router',
+  '0x3A9D48AB9751398BbFa63ad67599Bb04e4BdF98b': 'Uniswap Universal Router v2',
+}
+
 const SPENDER_REGISTRY: Record<SupportedChainId, Record<string, string>> = {
   8453: KNOWN_SPENDERS_BASE,
   84532: KNOWN_SPENDERS_BASE_SEPOLIA,
+  11155111: KNOWN_SPENDERS_ETHEREUM_SEPOLIA,
 }
 
 export function getKnownSpenders(chainId: SupportedChainId): `0x${string}`[] {

@@ -68,4 +68,52 @@ describe('createPolicyStore', () => {
     expect(policy.limits.swap_per_tx_usdc).toBe(200)
     expect(policy.limits.swap_daily_usdc).toBe(500)
   })
+
+  it('accepts ethereum-sepolia as a valid policy chain', () => {
+    writeFileSync(
+      policyPath,
+      yamlStringify({
+        version: 1,
+        profile: 'locked',
+        account: { chain: 'ethereum-sepolia' },
+        approval: {
+          low_risk: 'touch_id',
+          medium_risk: 'touch_id',
+          high_risk: 'touch_id',
+          admin: 'touch_id',
+          timeout_seconds: 180,
+        },
+        limits: {
+          transfer_per_tx_usdc: 100,
+          transfer_daily_usdc: 300,
+          swap_per_tx_usdc: 200,
+          swap_daily_usdc: 500,
+          max_slippage_bps: 50,
+          max_gas_usd: 10,
+        },
+        allowlists: {
+          recipients: [],
+          protocols: ['uniswap'],
+          tokens: ['ETH', 'USDC'],
+          chains: ['ethereum'],
+        },
+        dangerous_actions: {
+          unlimited_approvals: false,
+          new_recipients: 'ask',
+          new_protocols: 'ask',
+          arbitrary_calldata: 'deny',
+          contract_upgrades: 'deny',
+          owner_changes: 'deny',
+        },
+        automation: {
+          enabled: false,
+          allowed_actions: [],
+          auto_execute: false,
+        },
+      }),
+    )
+
+    const policy = createPolicyStore(policyPath).load()
+    expect(policy.account.chain).toBe('ethereum-sepolia')
+  })
 })

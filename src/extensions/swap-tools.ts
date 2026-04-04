@@ -2,6 +2,7 @@ import type { ExtensionAPI } from '@mariozechner/pi-coding-agent'
 import { Type } from '@sinclair/typebox'
 import { formatUnits } from 'viem'
 import { getSwapQuote, buildSwapCalls } from '../adapters/uniswap/index.js'
+import { getApiSwapQuote, buildApiSwapCalls } from '../adapters/uniswap/index.js'
 import { findToken } from '../wallet-core/tokens.js'
 import { executeWriteAction } from '../wallet-core/execute.js'
 import { getUsdcSpendingCapAmount } from '../wallet-core/spending-cap.js'
@@ -18,6 +19,8 @@ export function registerSwapTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
       'Use this before build_swap to show the user what they would get.',
       'Tries multiple fee tiers and returns the best quote.',
       'Always show the quote to the user before executing.',
+      'If the user already provided amount + input token + output token, do not ask them to repeat it — call this tool directly.',
+      'If the user asks to swap ETH to USDC with an exact amount, treat that as sufficient to quote immediately.',
     ],
     parameters: Type.Object({
       tokenIn: Type.String({ description: 'Input token symbol (e.g. "ETH", "USDC")' }),
@@ -34,6 +37,43 @@ export function registerSwapTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
       const tokenOut = findToken(maki.config.chainId, params.tokenOut)
       if (!tokenOut) throw new Error(`Token "${params.tokenOut}" not found in verified registry.`)
 
+      // Use Uniswap Trading API when configured, fall back to on-chain Quoter V2
+      if (maki.config.uniswapApiKey) {
+        const swapper =
+          maki.config.smartAccountAddress ?? ('0x0000000000000000000000000000000000000000' as `0x${string}`)
+        const apiQuote = await getApiSwapQuote(maki.config.uniswapApiKey, maki.config.chainId, swapper, {
+          tokenIn,
+          tokenOut,
+          amountIn: params.amountIn,
+        })
+
+        const lines = [
+          `Swap Quote (Uniswap API):`,
+          `  ${apiQuote.amountIn} ${apiQuote.tokenIn.symbol} → ${apiQuote.amountOut} ${apiQuote.tokenOut.symbol}`,
+          `  Route: ${apiQuote.routing} — ${apiQuote.routeString}`,
+          `  Price impact: ${apiQuote.priceImpact}%`,
+          `  Est. gas: $${apiQuote.gasFeeUSD}`,
+        ]
+
+        return {
+          content: [{ type: 'text' as const, text: lines.join('\n') }],
+          details: {
+            tokenIn: apiQuote.tokenIn.symbol,
+            tokenOut: apiQuote.tokenOut.symbol,
+            amountIn: apiQuote.amountIn,
+            amountOut: apiQuote.amountOut,
+            routing: apiQuote.routing,
+            priceImpact: apiQuote.priceImpact,
+            source: 'uniswap-api',
+          },
+        }
+      }
+
+      if (maki.config.chainId === 11155111) {
+        throw new Error('Ethereum Sepolia swaps require `uniswapApiKey`; the local Uniswap fallback is not configured.')
+      }
+
+      // Fallback: on-chain Quoter V2
       const quote = await getSwapQuote(maki.chainClient, maki.config.chainId, {
         tokenIn,
         tokenOut,
@@ -55,6 +95,7 @@ export function registerSwapTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
           amountIn: quote.amountIn,
           amountOut: quote.amountOut,
           fee: quote.fee,
+          source: 'on-chain',
         },
       }
     },
@@ -71,6 +112,8 @@ export function registerSwapTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
       'The user should confirm the quote before executing.',
       'Default slippage is 50bps (0.5%). The user can specify a different value.',
       'This goes through the full write pipeline: policy → simulate → approve → submit.',
+      'If the user already provided a complete exact-in swap request, do not ask for the amount again.',
+      'Only ask follow-up questions when the amount, token pair, or chain is genuinely ambiguous.',
     ],
     parameters: Type.Object({
       tokenIn: Type.String({ description: 'Input token symbol (e.g. "ETH", "USDC")' }),
@@ -91,22 +134,52 @@ export function registerSwapTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
       if (!tokenOut) throw new Error(`Token "${params.tokenOut}" not found in verified registry.`)
 
       const slippageBps = params.slippageBps ?? 50
-
-      const quote = await getSwapQuote(maki.chainClient, maki.config.chainId, {
-        tokenIn,
-        tokenOut,
-        amountIn: params.amountIn,
-      })
-
-      const calls = buildSwapCalls(maki.config.chainId, {
-        quote,
-        recipient: from,
-        slippageBps,
-      })
-
-      const description = `Swap ${quote.amountIn} ${tokenIn.symbol} for ~${quote.amountOut} ${tokenOut.symbol} (max slippage: ${slippageBps / 100}%)`
-
       const amountUsdc = getUsdcSpendingCapAmount(tokenIn.symbol, params.amountIn)
+
+      let calls: import('../wallet-core/userop.js').UserOpCall[]
+      let amountOut: string
+      let amountOutMin: string
+      let swapSource: string
+
+      // Use Uniswap Trading API when configured, fall back to on-chain
+      if (maki.config.uniswapApiKey) {
+        const apiResult = await buildApiSwapCalls(maki.config.uniswapApiKey, maki.config.chainId, from, {
+          tokenIn,
+          tokenOut,
+          amountIn: params.amountIn,
+          slippageBps,
+        })
+        calls = apiResult.calls
+        amountOut = apiResult.quote.amountOut
+        amountOutMin = formatUnits(apiResult.quote.amountOutMinimum, tokenOut.decimals)
+        swapSource = `Uniswap API (${apiResult.quote.routing})`
+      } else {
+        if (maki.config.chainId === 11155111) {
+          throw new Error(
+            'Ethereum Sepolia swaps require `uniswapApiKey`; the local Uniswap fallback is not configured.',
+          )
+        }
+
+        // Fallback: on-chain Quoter V2 + local calldata construction
+        const quote = await getSwapQuote(maki.chainClient, maki.config.chainId, {
+          tokenIn,
+          tokenOut,
+          amountIn: params.amountIn,
+        })
+        calls = buildSwapCalls(maki.config.chainId, {
+          quote,
+          recipient: from,
+          slippageBps,
+        })
+        amountOut = quote.amountOut
+        amountOutMin = formatUnits(
+          quote.amountOutRaw - (quote.amountOutRaw * BigInt(slippageBps)) / 10000n,
+          tokenOut.decimals,
+        )
+        swapSource = 'on-chain'
+      }
+
+      const description = `Swap ${params.amountIn} ${tokenIn.symbol} for ~${amountOut} ${tokenOut.symbol} (max slippage: ${slippageBps / 100}%) via ${swapSource}`
 
       let result = await executeWriteAction(
         {
@@ -141,8 +214,8 @@ export function registerSwapTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
               type: 'text' as const,
               text: [
                 `Swap confirmed on-chain.`,
-                `  ${quote.amountIn} ${tokenIn.symbol} → ~${quote.amountOut} ${tokenOut.symbol}`,
-                `  Min output: ${formatUnits(quote.amountOutRaw - (quote.amountOutRaw * BigInt(slippageBps)) / 10000n, tokenOut.decimals)} ${tokenOut.symbol}`,
+                `  ${params.amountIn} ${tokenIn.symbol} → ~${amountOut} ${tokenOut.symbol}`,
+                `  Min output: ${amountOutMin} ${tokenOut.symbol}`,
                 `  Tx: ${result.txHash}`,
                 '',
                 result.summary,
@@ -160,7 +233,7 @@ export function registerSwapTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
               type: 'text' as const,
               text: [
                 `Swap approved.`,
-                `  ${quote.amountIn} ${tokenIn.symbol} → ~${quote.amountOut} ${tokenOut.symbol}`,
+                `  ${params.amountIn} ${tokenIn.symbol} → ~${amountOut} ${tokenOut.symbol}`,
                 result.error ?? '',
                 '',
                 result.summary,
