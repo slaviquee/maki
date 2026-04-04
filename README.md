@@ -1,5 +1,9 @@
 # Maki
 
+<p align="center">
+  <img src="docs/assets/maki-mascot.png" alt="Maki mascot" width="220" />
+</p>
+
 Hardware-signed onchain agent for everyday DeFi, built on Pi: deterministic execution, isolated keys, local policy guardrails, and human-backed verification.
 
 Maki is designed around one hard rule: the model can interpret intent, but it can never directly move funds.
