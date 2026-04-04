@@ -35,6 +35,7 @@ export interface StatusResult {
   signerType: 'secure-enclave' | 'mock'
   hasKey: boolean
   publicKey?: string
+  keyStorage?: 'persistent' | 'ephemeral' | 'none'
 }
 
 export interface GetPublicKeyResult {
@@ -74,6 +75,7 @@ export interface CreateKeyResult {
   x: `0x${string}`
   y: `0x${string}`
   created: boolean
+  keyStorage?: 'persistent' | 'ephemeral' | 'none'
 }
 
 // Client interface

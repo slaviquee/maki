@@ -27,9 +27,8 @@ extension SecureEnclaveSigner: SignerBackend {
         }
 
         do {
-            let derSignature = try sign(hash: hashData, reason: params.actionSummary)
-            let (r, s) = try SecureEnclaveSigner.parseDERSignature(derSignature)
-            let sigHex = "0x" + (r + s).map { String(format: "%02x", $0) }.joined()
+            let signature = try sign(hash: hashData)
+            let sigHex = "0x" + signature.map { String(format: "%02x", $0) }.joined()
             return SignHashResult(signature: sigHex, approved: true)
         } catch SecureEnclaveSigner.SignerError.userCancelled {
             return SignHashResult(signature: "0x", approved: false)
@@ -41,7 +40,7 @@ extension SecureEnclaveSigner: SignerBackend {
         // We sign a hash of the summary to force biometric authentication.
         let summaryData = params.summary.data(using: .utf8) ?? Data()
         do {
-            _ = try sign(hash: summaryData, reason: params.summary)
+            _ = try sign(hash: summaryData)
             return ApproveActionResult(approved: true, reason: nil)
         } catch SecureEnclaveSigner.SignerError.userCancelled {
             return ApproveActionResult(approved: false, reason: "User cancelled")

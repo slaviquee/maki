@@ -45,6 +45,7 @@ struct MessageHandler {
                 "signerType": s.signerType,
                 "hasKey": s.hasKey,
                 "publicKey": s.publicKey as Any,
+                "keyStorage": s.keyStorage,
             ] as [String: Any])
 
         case "get_public_key":
@@ -79,11 +80,13 @@ struct MessageHandler {
                     _ = try enclaveSigner.ensureKey()
                     let coords = try enclaveSigner.getPublicKeyCoordinates()
                     let pubKey = try enclaveSigner.getPublicKeyHex()
+                    let status = enclaveSigner.status()
                     return ok(request.id, [
                         "publicKey": pubKey,
                         "x": coords.x,
                         "y": coords.y,
                         "created": true,
+                        "keyStorage": status.keyStorage,
                     ] as [String: Any])
                 } catch {
                     return err(request.id, "KEY_ERROR", error.localizedDescription)

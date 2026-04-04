@@ -32,11 +32,20 @@ struct StatusResult: Codable {
     let signerType: String
     let hasKey: Bool
     let publicKey: String?
+    let keyStorage: String
 }
 
 struct GetPublicKeyResult: Codable {
     let publicKey: String
     let address: String
+}
+
+struct CreateKeyResult: Codable {
+    let publicKey: String
+    let x: String
+    let y: String
+    let created: Bool
+    let keyStorage: String
 }
 
 struct SignHashParams: Codable {

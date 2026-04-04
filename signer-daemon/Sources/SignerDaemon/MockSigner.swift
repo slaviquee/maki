@@ -12,7 +12,8 @@ struct MockSigner: SignerBackend {
             ready: true,
             signerType: "mock",
             hasKey: true,
-            publicKey: MockSigner.publicKey
+            publicKey: MockSigner.publicKey,
+            keyStorage: "persistent"
         )
     }
 

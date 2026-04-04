@@ -19,6 +19,7 @@ npm run build
 
 # Build the signer daemon
 cd signer-daemon && swift build && cd ..
+./scripts/codesign-signer-dev.sh
 ```
 
 ## 2. Start the signer daemon
@@ -27,13 +28,13 @@ The signer daemon is a native macOS process that holds keys in Apple Secure Encl
 
 ```bash
 # Start with Secure Enclave backend (production)
-./signer-daemon/.build/debug/SignerDaemon --socket ~/.maki/signer.sock
+./signer-daemon/.build/arm64-apple-macosx/debug/maki-signer ~/.maki/signer.sock
 
 # Or start with mock backend (testing only — no Touch ID)
-./signer-daemon/.build/debug/SignerDaemon --mock --socket ~/.maki/signer.sock
+./signer-daemon/.build/arm64-apple-macosx/debug/maki-signer --mock ~/.maki/signer.sock
 ```
 
-Keep this running in a separate terminal. It will create a P-256 key in Secure Enclave on first use.
+Keep this running in a separate terminal. It will create a persistent P-256 key in Secure Enclave on first use.
 
 ## 3. Configure Maki
 

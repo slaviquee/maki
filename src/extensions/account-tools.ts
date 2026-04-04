@@ -23,13 +23,19 @@ export function registerAccountTools(pi: ExtensionAPI, getCtx: () => MakiContext
       const maki = getCtx()
 
       // Ensure signer has a key
-      await maki.signer.createKey()
+      const createKey = await maki.signer.createKey()
 
       // Get account info
       const info = await getSmartAccountInfo(maki.chainClient, maki.signer)
 
-      // Persist the counterfactual address so it's reused across sessions
-      saveConfigField('smartAccountAddress', info.address)
+      const keyStorage = createKey.keyStorage ?? 'persistent'
+      const isSessionOnly = keyStorage === 'ephemeral'
+
+      // Persist only when the signer has a durable key. Session-only Secure
+      // Enclave keys change on restart, so persisting that address would be misleading.
+      if (!isSessionOnly) {
+        saveConfigField('smartAccountAddress', info.address)
+      }
       maki.config.smartAccountAddress = info.address
 
       const lines = [
@@ -38,8 +44,14 @@ export function registerAccountTools(pi: ExtensionAPI, getCtx: () => MakiContext
         `Deployed: ${info.isDeployed ? 'yes' : 'no (will deploy on first transaction)'}`,
         `Owner public key (P-256): ${info.ownerPublicKey.slice(0, 20)}...`,
         `Signer mode: ${maki.signerMode}`,
+        `Key storage: ${keyStorage}`,
         '',
-        'Address saved to ~/.maki/config.yaml.',
+        ...(isSessionOnly
+          ? [
+              'Session-only Secure Enclave key: this address is valid only while the signer daemon keeps running.',
+              'Address was not saved to ~/.maki/config.yaml.',
+            ]
+          : ['Address saved to ~/.maki/config.yaml.']),
         'Fund this address with ETH to start using it.',
       ]
 
@@ -50,6 +62,7 @@ export function registerAccountTools(pi: ExtensionAPI, getCtx: () => MakiContext
           isDeployed: info.isDeployed,
           chainId: maki.config.chainId,
           signerMode: maki.signerMode,
+          keyStorage,
         },
       }
     },

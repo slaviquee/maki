@@ -19,6 +19,7 @@ export function registerSignerTools(pi: ExtensionAPI, getCtx: () => MakiContext)
           `Signer: ${status.ready ? 'ready' : 'not ready'}`,
           `Type: ${status.signerType}`,
           `Has key: ${status.hasKey}`,
+          ...(status.keyStorage ? [`Key storage: ${status.keyStorage}`] : []),
           ...(status.publicKey ? [`Public key: ${status.publicKey.slice(0, 20)}...`] : []),
         ]
         return {
