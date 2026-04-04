@@ -10,35 +10,45 @@ Step-by-step runbook for making your first real transaction from Maki on Base Se
 - A Pimlico API key (free tier at [pimlico.io](https://pimlico.io))
 - Small amount of Base Sepolia ETH (faucet: [faucet.base.org](https://www.base.org/faucet) or similar)
 
-## 1. Build everything
+## 1. Install Maki
 
 ```bash
-# From repo root
-npm install
-npm run build
-
-# Build the signer daemon
-cd signer-daemon && swift build && cd ..
-./scripts/codesign-signer-dev.sh
+npm install -g maki
 ```
 
-## 2. Start the signer daemon
+## 2. Run first-time setup
 
-The signer daemon is a native macOS process that holds keys in Apple Secure Enclave. It must be running before Maki can sign anything.
+Launch Maki once:
 
 ```bash
-# Start with Secure Enclave backend (production)
-./signer-daemon/.build/arm64-apple-macosx/debug/maki-signer ~/.maki/signer.sock
-
-# Or start with mock backend (testing only — no Touch ID)
-./signer-daemon/.build/arm64-apple-macosx/debug/maki-signer --mock ~/.maki/signer.sock
+maki
 ```
 
-Keep this running in a separate terminal. It will create a persistent P-256 key in Secure Enclave on first use.
+On first launch, Maki runs a setup wizard and writes `~/.maki/config.yaml` and `~/.maki/policy.yaml`.
 
-## 3. Configure Maki
+During setup:
+- pick Base Sepolia
+- choose `secure-enclave`
+- enter your Pimlico API key
+- choose a security profile
 
-On first run, `~/.maki/` is created automatically with defaults. Edit the config:
+Model/provider login still happens inside the chat shell via `/login`.
+
+## 3. Start the signer daemon
+
+In a separate terminal:
+
+```bash
+maki signer start
+```
+
+This builds and ad-hoc signs the native helper if needed, then starts the Secure Enclave signer on `~/.maki/signer.sock`.
+
+Keep this terminal open while you use Maki.
+
+## 4. Verify config
+
+Your config should look roughly like this:
 
 ```bash
 # ~/.maki/config.yaml
@@ -52,9 +62,15 @@ Required fields for a real transaction:
 - `signerType: secure-enclave` (not `mock`)
 - `bundlerApiKey`: your Pimlico API key (get one at pimlico.io, free tier includes Base Sepolia)
 
-## 4. Create your smart account
+## 5. Create your smart account
 
-Launch Maki and ask it to create a smart account:
+Launch Maki and log in to a model if needed:
+
+```text
+/login
+```
+
+Then ask it to create a smart account:
 
 ```
 > Create my smart account
@@ -67,7 +83,7 @@ This calls `create_smart_account`, which:
 
 The account is **counterfactual** — the address is known, but no on-chain contract exists yet. Deployment happens atomically with the first transaction.
 
-## 5. Fund the account
+## 6. Fund the account
 
 Send a small amount of Base Sepolia ETH to the counterfactual address shown in step 4.
 
@@ -81,7 +97,7 @@ Verify the balance:
 > Check my balance
 ```
 
-## 6. Send a tiny transfer
+## 7. Send a tiny transfer
 
 ```
 > Send 0.001 ETH to 0xYOUR_TEST_RECIPIENT_ADDRESS
@@ -130,6 +146,7 @@ Check `~/.maki/policy.yaml`. The default locked profile allows ETH and USDC tran
 
 ## Verification checklist
 
+- [ ] Setup wizard completed on first launch
 - [ ] Signer daemon running with Secure Enclave backend
 - [ ] `config.yaml` has `signerType: secure-enclave` and `bundlerApiKey`
 - [ ] Smart account created and address saved

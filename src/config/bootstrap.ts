@@ -8,6 +8,19 @@ const DEFAULT_CONFIG = {
   chainId: 84532 as const,
   rpcUrl: 'https://sepolia.base.org',
   signerType: 'mock' as const,
+  setupComplete: false,
+}
+
+function inferSetupComplete(raw: Record<string, unknown>): boolean {
+  if (typeof raw['setupComplete'] === 'boolean') {
+    return raw['setupComplete']
+  }
+
+  return (
+    typeof raw['smartAccountAddress'] === 'string' ||
+    typeof raw['bundlerApiKey'] === 'string' ||
+    raw['signerType'] === 'secure-enclave'
+  )
 }
 
 export function bootstrap(): MakiConfig {
@@ -39,6 +52,7 @@ export function bootstrap(): MakiConfig {
     configPath: paths.config,
     dbPath: paths.db,
     signerType: (raw['signerType'] as MakiConfig['signerType']) ?? 'none',
+    setupComplete: inferSetupComplete(raw),
     smartAccountAddress: raw['smartAccountAddress'] as `0x${string}` | undefined,
     bundlerApiKey: (raw['bundlerApiKey'] as string) ?? undefined,
   }

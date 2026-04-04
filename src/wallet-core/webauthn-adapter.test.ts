@@ -94,8 +94,9 @@ describe('createWebAuthnAccount', () => {
 
 describe('normalizeP256Signature', () => {
   it('normalizes high-s signatures into the low-s form expected by webauthn-sol', () => {
-    const highSSignature =
-      ('0x' + '11'.repeat(32) + 'ffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632550') as Hex
+    const highSSignature = ('0x' +
+      '11'.repeat(32) +
+      'ffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632550') as Hex
 
     expect(normalizeP256Signature(highSSignature)).toBe(
       '0x' + '11'.repeat(32) + '0000000000000000000000000000000000000000000000000000000000000001',
