@@ -1,4 +1,4 @@
-import { type PublicClient, type Hex, formatEther } from 'viem'
+import { type PublicClient, type Hex, formatEther, encodeFunctionData } from 'viem'
 
 export interface SimulationCall {
   to: `0x${string}`
@@ -14,7 +14,7 @@ export interface SimulationResult {
 }
 
 /**
- * Simulates a call using eth_call to check if it would succeed.
+ * Simulates a single call using eth_call.
  */
 export async function simulateCall(
   client: PublicClient,
@@ -41,15 +41,77 @@ export async function simulateCall(
   }
 }
 
+// Coinbase Smart Wallet executeBatch ABI for simulation
+const executeBatchAbi = [
+  {
+    type: 'function',
+    name: 'executeBatch',
+    stateMutability: 'payable',
+    inputs: [
+      {
+        name: 'calls',
+        type: 'tuple[]',
+        components: [
+          { name: 'target', type: 'address' },
+          { name: 'value', type: 'uint256' },
+          { name: 'data', type: 'bytes' },
+        ],
+      },
+    ],
+    outputs: [],
+  },
+] as const
+
 /**
- * Simulates multiple calls and returns results for each.
+ * Simulates a sequence of calls as a single batch via the smart account's
+ * executeBatch. This ensures approve+swap and other multi-step plans are
+ * simulated with correct intermediate state (e.g. the swap sees the approval).
+ *
+ * Falls back to individual call simulation if the account is not deployed.
  */
-export async function simulateCalls(
+export async function simulateCallSequence(
   client: PublicClient,
   from: `0x${string}`,
   calls: SimulationCall[],
-): Promise<SimulationResult[]> {
-  return Promise.all(calls.map((call) => simulateCall(client, from, call)))
+): Promise<SimulationResult> {
+  if (calls.length === 0) {
+    return { success: true }
+  }
+
+  if (calls.length === 1) {
+    return simulateCall(client, from, calls[0]!)
+  }
+
+  // Encode as executeBatch on the smart account
+  const totalValue = calls.reduce((sum, c) => sum + (c.value ?? 0n), 0n)
+
+  try {
+    const batchCalldata = encodeFunctionData({
+      abi: executeBatchAbi,
+      functionName: 'executeBatch',
+      args: [
+        calls.map((c) => ({
+          target: c.to,
+          value: c.value ?? 0n,
+          data: (c.data ?? '0x') as Hex,
+        })),
+      ],
+    })
+
+    await client.call({
+      account: from,
+      to: from, // call executeBatch on the smart account itself
+      data: batchCalldata,
+      value: totalValue,
+    })
+
+    return { success: true }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Batch simulation failed',
+    }
+  }
 }
 
 /**

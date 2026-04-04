@@ -107,6 +107,14 @@ export function registerSwapTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
 
       const description = `Swap ${quote.amountIn} ${tokenIn.symbol} for ~${quote.amountOut} ${tokenOut.symbol} (max slippage: ${slippageBps / 100}%)`
 
+      const amountUsd = await estimateUsdValue(
+        maki.chainClient,
+        maki.config.chainId,
+        tokenIn.symbol,
+        tokenIn.address,
+        params.amountIn,
+      )
+
       // Execute through write pipeline
       const result = await executeWriteAction(
         {
@@ -119,7 +127,7 @@ export function registerSwapTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
             type: 'swap',
             protocol: 'uniswap',
             token: tokenIn.symbol,
-            amountUsd: estimateUsdValue(tokenIn.symbol, params.amountIn),
+            amountUsd,
             slippageBps,
           },
         },

@@ -5,7 +5,7 @@ import type { SpendingTracker } from '../policy/spending-tracker.js'
 import type { AuditLog } from './audit-log.js'
 import { checkAction } from '../policy/engine.js'
 import type { ActionDetails } from '../policy/types.js'
-import { simulateCall } from './simulation.js'
+import { simulateCallSequence } from './simulation.js'
 import type { UserOpPlan } from './userop.js'
 
 export interface WriteAction {
@@ -17,8 +17,6 @@ export interface WriteResult {
   status: 'approved' | 'denied' | 'simulation_failed' | 'rejected' | 'error'
   summary: string
   error?: string
-  /** Populated when approved. Caller must record this after on-chain confirmation. */
-  pendingSpend?: { type: 'transfer' | 'swap'; amountUsd: number }
 }
 
 /**
@@ -93,32 +91,24 @@ export async function executeWriteAction(
     }
   }
 
-  // 2. Simulate — single-call plans are simulated directly via eth_call.
-  // Multi-call plans (e.g. approve+swap) cannot be simulated individually
-  // because later calls depend on state changes from earlier ones. These
-  // rely on the bundler's full UserOp simulation at submission time.
-  if (plan.calls.length === 1) {
-    const call = plan.calls[0]!
-    const simResult = await simulateCall(client, from, {
-      to: call.to,
-      data: call.data,
-      value: call.value,
-    })
+  // 2. Simulate — all plans are simulated before approval.
+  // Single calls use direct eth_call. Multi-call plans (e.g. approve+swap)
+  // are simulated as an executeBatch on the smart account so that later calls
+  // see state changes from earlier ones (e.g. the swap sees the approval).
+  const simResult = await simulateCallSequence(client, from, plan.calls)
 
-    if (!simResult.success) {
-      auditLog?.log(
-        'simulation_failed',
-        simResult.error ?? 'Unknown',
-        policyDetails as unknown as Record<string, unknown>,
-      )
-      return {
-        status: 'simulation_failed',
-        summary,
-        error: `Simulation failed: ${simResult.error}`,
-      }
+  if (!simResult.success) {
+    auditLog?.log(
+      'simulation_failed',
+      simResult.error ?? 'Unknown',
+      policyDetails as unknown as Record<string, unknown>,
+    )
+    return {
+      status: 'simulation_failed',
+      summary,
+      error: `Simulation failed: ${simResult.error}`,
     }
   }
-  // Multi-call plans: simulation deferred to bundler UserOp validation
 
   // 3. Request approval via signHash (real Touch ID, not the no-op approveAction)
   if (policyResult.approvalMode === 'touch_id') {
@@ -141,21 +131,21 @@ export async function executeWriteAction(
     }
   }
 
-  // 4. Log approval (spending is NOT recorded here — must be recorded after
-  // on-chain confirmation to avoid burning daily budget on unsubmitted actions)
-  auditLog?.log('write_approved', summary, policyDetails as unknown as Record<string, unknown>)
+  // 4. Record spending at approval time. This is conservative — it counts
+  // toward daily limits even if submission later fails. The alternative
+  // (recording after confirmation) would leave a window where approved-but-
+  // unsubmitted actions bypass daily caps. Over-counting is safer than under-
+  // counting. When the submission/receipt pipeline is added, this should move
+  // to post-confirmation and failed submissions should refund the allowance.
+  if (spending && policyDetails.amountUsd !== undefined) {
+    const spendType = policyDetails.type === 'swap' ? 'swap' : 'transfer'
+    spending.record(spendType, policyDetails.amountUsd)
+  }
 
-  const pendingSpend =
-    policyDetails.amountUsd !== undefined
-      ? {
-          type: (policyDetails.type === 'swap' ? 'swap' : 'transfer') as 'transfer' | 'swap',
-          amountUsd: policyDetails.amountUsd,
-        }
-      : undefined
+  auditLog?.log('write_approved', summary, policyDetails as unknown as Record<string, unknown>)
 
   return {
     status: 'approved',
     summary,
-    pendingSpend,
   }
 }

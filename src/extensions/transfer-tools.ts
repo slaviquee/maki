@@ -5,6 +5,7 @@ import { findToken } from '../wallet-core/tokens.js'
 import { resolveEns } from '../wallet-core/ens.js'
 import { executeWriteAction } from '../wallet-core/execute.js'
 import { estimateUsdValue } from '../wallet-core/price-estimate.js'
+
 import type { MakiContext } from './context.js'
 
 export function registerTransferTools(pi: ExtensionAPI, getCtx: () => MakiContext) {
@@ -36,6 +37,7 @@ export function registerTransferTools(pi: ExtensionAPI, getCtx: () => MakiContex
       }
 
       const call = buildNativeTransfer(to, params.amount)
+      const amountUsd = await estimateUsdValue(maki.chainClient, maki.config.chainId, 'ETH', undefined, params.amount)
 
       const result = await executeWriteAction(
         {
@@ -48,7 +50,7 @@ export function registerTransferTools(pi: ExtensionAPI, getCtx: () => MakiContex
             type: 'transfer',
             recipient: to,
             token: 'ETH',
-            amountUsd: estimateUsdValue('ETH', params.amount),
+            amountUsd,
           },
         },
         maki.chainClient,
@@ -107,6 +109,13 @@ export function registerTransferTools(pi: ExtensionAPI, getCtx: () => MakiContex
       }
 
       const call = buildErc20Transfer({ token: tokenInfo, to, amount: params.amount })
+      const amountUsd = await estimateUsdValue(
+        maki.chainClient,
+        maki.config.chainId,
+        tokenInfo.symbol,
+        tokenInfo.address,
+        params.amount,
+      )
 
       const result = await executeWriteAction(
         {
@@ -119,7 +128,7 @@ export function registerTransferTools(pi: ExtensionAPI, getCtx: () => MakiContex
             type: 'transfer',
             recipient: to,
             token: tokenInfo.symbol,
-            amountUsd: estimateUsdValue(tokenInfo.symbol, params.amount),
+            amountUsd,
           },
         },
         maki.chainClient,
