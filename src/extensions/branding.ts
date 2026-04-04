@@ -144,6 +144,7 @@ const ABOUT_TEXT = [
   'Commands:',
   '  /doctor    Health checks (signer, RPC, policy, account)',
   '  /about     This message',
+  '  /world     World AgentKit status + registration help',
   '  /login     Connect to a model provider',
   '',
   'Getting started:',

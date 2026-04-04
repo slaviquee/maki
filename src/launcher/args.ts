@@ -2,7 +2,17 @@ import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const NON_AGENT_COMMANDS = new Set(['config', 'install', 'list', 'remove', 'setup', 'init', 'signer', 'update'])
+const NON_AGENT_COMMANDS = new Set([
+  'config',
+  'install',
+  'list',
+  'remove',
+  'setup',
+  'init',
+  'signer',
+  'update',
+  'world',
+])
 
 export interface RuntimePaths {
   packageRoot: string
@@ -28,6 +38,10 @@ export function isSetupCommand(args: string[]): boolean {
 
 export function isSignerCommand(args: string[]): boolean {
   return args[0] === 'signer'
+}
+
+export function isWorldCommand(args: string[]): boolean {
+  return args[0] === 'world'
 }
 
 export function isAgentLaunch(args: string[]): boolean {

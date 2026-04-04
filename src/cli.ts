@@ -1,10 +1,18 @@
 #!/usr/bin/env node
 process.title = 'maki'
 
-import { buildPiArgs, getRuntimePaths, isAgentLaunch, isSetupCommand, isSignerCommand } from './launcher/args.js'
+import {
+  buildPiArgs,
+  getRuntimePaths,
+  isAgentLaunch,
+  isSetupCommand,
+  isSignerCommand,
+  isWorldCommand,
+} from './launcher/args.js'
 import { bootstrap } from './config/bootstrap.js'
 import { runSignerCommand } from './launcher/signer.js'
 import { runSetupWizard } from './launcher/setup.js'
+import { runWorldCommand } from './launcher/world.js'
 
 async function run(): Promise<void> {
   const runtimePaths = getRuntimePaths(import.meta.url)
@@ -19,6 +27,11 @@ async function run(): Promise<void> {
 
   if (isSignerCommand(args)) {
     await runSignerCommand(args.slice(1), runtimePaths.packageRoot)
+    return
+  }
+
+  if (isWorldCommand(args)) {
+    await runWorldCommand(args.slice(1))
     return
   }
 

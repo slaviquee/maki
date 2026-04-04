@@ -1,11 +1,11 @@
 # World Agent Kit Demo
 
-Minimal end-to-end integration of World Agent Kit with Maki. A protected server endpoint uses AgentKit to distinguish human-backed agent wallets from unauthenticated clients.
+Minimal end-to-end integration of World Agent Kit with Maki. A protected local server endpoint uses AgentKit to distinguish human-backed agent wallets from unauthenticated clients, without relying on the public x402 facilitator.
 
 ## Architecture
 
 ```
-Maki (agent client)                     Demo Server (Hono + AgentKit)
+Maki (agent client)                   Demo Server (Hono + AgentKit manual flow)
   |                                       |
   |-- GET /protected ------------------>  |
   |                                       |-- Check: agentkit header?
@@ -17,6 +17,7 @@ Maki (agent client)                     Demo Server (Hono + AgentKit)
   |-- Encode agentkit header              |
   |                                       |
   |-- GET /protected + agentkit header -> |
+  |                                       |-- Validate message (domain, uri, nonce, time)
   |                                       |-- Verify SIWE signature (on-chain EIP-1271)
   |                                       |-- Lookup in AgentBook (configured deployment)
   |                                       |-- Check free-trial usage counter
@@ -55,6 +56,18 @@ npx tsx src/agentkit-demo/server.ts
 ```
 
 The server starts on `http://localhost:4021` by default. Override with `AGENTKIT_PORT=5000`.
+
+To use Ethereum Sepolia instead of Base Sepolia during the demo:
+
+```bash
+AGENTKIT_CHAIN_ID=11155111 npx tsx src/agentkit-demo/server.ts
+```
+
+You can also override the verifier RPC explicitly:
+
+```bash
+AGENTKIT_CHAIN_ID=11155111 AGENTKIT_EVM_RPC_URL=https://ethereum-sepolia-rpc.publicnode.com npx tsx src/agentkit-demo/server.ts
+```
 
 ### 3. Test from Maki
 
@@ -98,13 +111,15 @@ curl -s http://localhost:4021/health | jq .
 
 ### Server (World Agent Kit)
 
-The server uses the official AgentKit hooks-based flow:
+The server uses the official low-level AgentKit APIs:
 
-- `declareAgentkitExtension()` — configures the AgentKit challenge parameters
-- `agentkitResourceServerExtension` — enriches 402 responses with challenge nonce/timestamp
+- `parseAgentkitHeader()` — decodes the signed `agentkit` header
+- `validateAgentkitMessage()` — checks domain, URI, nonce, and timing rules
+- `verifyAgentkitSignature()` — verifies the smart-wallet signature on-chain
 - `createAgentBookVerifier()` — verifies agent registration on-chain via the configured AgentBook deployment
-- `createAgentkitHooks()` — implements the request hook for free-trial access control
-- `InMemoryAgentKitStorage` — tracks per-human usage counts (3 free uses)
+- `InMemoryAgentKitStorage` — tracks per-human usage counts and nonce replay protection for the demo
+
+This is still AgentKit, just without the public x402 facilitator in the middle. That makes the hackathon demo more reliable and easier to run locally.
 
 ### Client (Maki adapter)
 
@@ -129,15 +144,17 @@ Maki uses **EIP-1271** (smart contract wallet signature verification):
 
 If the smart account is not yet deployed on-chain, EIP-6492 counterfactual verification may be needed. The current implementation uses standard EIP-1271 which requires the account to be deployed.
 
+For demos on Ethereum Sepolia, make sure the Maki smart account has already executed at least one on-chain transaction there before testing AgentKit verification.
+
 ## Protected behavior
 
-| Client type                                              | Result                                   |
-| -------------------------------------------------------- | ---------------------------------------- |
-| No `agentkit` header                                     | 402 Payment Required with SIWE challenge |
-| Valid signature, registered in AgentBook, uses remaining | 200 + protected content                  |
-| Valid signature, registered, uses exhausted (>3)         | 402 (payment required)                   |
-| Valid signature, NOT registered in AgentBook             | 402 (not verified as human-backed)       |
-| Invalid/expired signature                                | 402 (verification failed)                |
+| Client type                                              | Result                                       |
+| -------------------------------------------------------- | -------------------------------------------- |
+| No `agentkit` header                                     | 402 Payment Required with AgentKit challenge |
+| Valid signature, registered in AgentBook, uses remaining | 200 + protected content                      |
+| Valid signature, registered, uses exhausted (>10)        | 403 (free-trial exhausted)                   |
+| Valid signature, NOT registered in AgentBook             | 402 (not verified as human-backed)           |
+| Invalid/expired signature                                | 402 (verification failed)                    |
 
 ## Files
 
@@ -154,10 +171,10 @@ If the smart account is not yet deployed on-chain, EIP-6492 counterfactual verif
 
 ## Demo vs production
 
-| Aspect        | Demo                                      | Production                            |
-| ------------- | ----------------------------------------- | ------------------------------------- |
-| Storage       | In-memory (`InMemoryAgentKitStorage`)     | Database with row-level locking       |
-| Network       | Base Sepolia (testnet)                    | Base mainnet                          |
-| Facilitator   | x402.org public facilitator               | Self-hosted or production facilitator |
-| Server        | Single-process Hono                       | Deployed service with proper auth     |
-| payTo address | Dummy address (not charged in free-trial) | Real recipient address                |
+| Aspect      | Demo                                  | Production                           |
+| ----------- | ------------------------------------- | ------------------------------------ |
+| Storage     | In-memory (`InMemoryAgentKitStorage`) | Database with row-level locking      |
+| Network     | Base Sepolia or Ethereum Sepolia      | Production chain / dedicated config  |
+| Facilitator | Not required for this local demo      | Optional depending on product design |
+| Server      | Single-process Hono                   | Deployed service with proper auth    |
+| Storage     | In-memory usage + nonce tracking      | Durable storage                      |

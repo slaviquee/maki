@@ -48,3 +48,4 @@ description: Default context for Base and Ethereum Sepolia operations. Safety ra
 
 - When a request already contains amount + token pair, start with the relevant read-only tool instead of asking a redundant clarification
 - For swaps, the normal flow is: quote first, then explicit user confirmation, then execute
+- If the user asks to test AgentKit access or verify that Maki is a human-backed agent, call the AgentKit verification tool immediately instead of searching the repo

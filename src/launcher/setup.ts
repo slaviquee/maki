@@ -8,6 +8,13 @@ import type { MakiConfig, SupportedChainId } from '../config/types.js'
 import { defaultPolicy } from '../policy/defaults.js'
 import type { Policy, SecurityProfile } from '../policy/types.js'
 import { ensureSignerBinary } from './signer.js'
+import {
+  DEFAULT_WORLD_AGENTKIT_URL,
+  defaultAllowedOrigins,
+  normalizeWorldUrl,
+  parseAllowedOrigins,
+  registerWorldAgent,
+} from './world.js'
 
 export function inferSetupComplete(raw: Record<string, unknown>): boolean {
   if (typeof raw['setupComplete'] === 'boolean') {
@@ -181,6 +188,27 @@ export async function runSetupWizard(packageRoot: string, launchAfterSetup: bool
   const uniswapApiKey = normalizeOptional(
     await ask('Uniswap API key (optional, enables optimized swap routing via Trading API). Leave blank to skip: '),
   )
+  const enableWorld = ['y', 'yes'].includes(
+    (await ask('Enable World AgentKit demo flow? [y/N]: ')).trim().toLowerCase(),
+  )
+  let worldEnabled = false
+  let worldDefaultUrl = DEFAULT_WORLD_AGENTKIT_URL
+  let worldAllowedOrigins: string[] = []
+  let worldRegistered = false
+  let worldRegistrationTx: `0x${string}` | undefined
+
+  if (enableWorld) {
+    worldEnabled = true
+    worldDefaultUrl = normalizeWorldUrl(
+      await ask(`World AgentKit default URL. Leave blank for ${DEFAULT_WORLD_AGENTKIT_URL}: `),
+    )
+    const allowedOriginsInput = await ask(
+      'Allowed remote origins (comma-separated, optional). Leave blank to keep loopback-only or use the default URL origin: ',
+    )
+    worldAllowedOrigins = allowedOriginsInput.trim()
+      ? parseAllowedOrigins(allowedOriginsInput)
+      : defaultAllowedOrigins(worldDefaultUrl)
+  }
   const recoveryAddress = normalizeRecoveryAddress(
     await ask('Recovery address (optional, 0x... format). Leave blank to skip: '),
   )
@@ -205,6 +233,33 @@ export async function runSetupWizard(packageRoot: string, launchAfterSetup: bool
     delete raw['uniswapApiKey']
   }
 
+  raw['world'] = {
+    enabled: worldEnabled,
+    defaultUrl: worldDefaultUrl,
+    allowedOrigins: worldAllowedOrigins,
+    registered: false,
+  }
+
+  const existingSmartAccountAddress = raw['smartAccountAddress'] as `0x${string}` | undefined
+
+  if (worldEnabled && existingSmartAccountAddress) {
+    const registerNow = ['y', 'yes'].includes(
+      (await ask('Register this smart account with World AgentKit now? [y/N]: ')).trim().toLowerCase(),
+    )
+    if (registerNow) {
+      const result = await registerWorldAgent(existingSmartAccountAddress)
+      worldRegistered = result.ok
+      worldRegistrationTx = result.tx
+      raw['world'] = {
+        enabled: worldEnabled,
+        defaultUrl: worldDefaultUrl,
+        allowedOrigins: worldAllowedOrigins,
+        registered: worldRegistered,
+        registrationTx: worldRegistrationTx,
+      }
+    }
+  }
+
   writeRawConfig(raw)
   writeSetupPolicy(profile, chainId, recoveryAddress)
 
@@ -222,11 +277,32 @@ export async function runSetupWizard(packageRoot: string, launchAfterSetup: bool
   output.write(`Network: ${chainLabel(chainId)}\n`)
   output.write(`Signer: ${signerType}\n`)
   output.write(`Profile: ${profile}\n`)
+  if (worldEnabled) {
+    output.write(`World AgentKit: enabled (${worldDefaultUrl})\n`)
+    if (worldAllowedOrigins.length > 0) {
+      output.write(`Allowed origins: ${worldAllowedOrigins.join(', ')}\n`)
+    }
+    if (worldRegistered) {
+      output.write('World registration: complete\n')
+      if (worldRegistrationTx) {
+        output.write(`World registration tx: ${worldRegistrationTx}\n`)
+      }
+    } else if (existingSmartAccountAddress) {
+      output.write('World registration: not completed yet\n')
+    }
+  }
   output.write('\nNext steps:\n')
   output.write('1. In another terminal, run: maki signer start\n')
   output.write('2. In Maki, run /login to pick your model provider\n')
   output.write('3. Ask: Create my smart account\n')
   output.write('4. Fund the address and ask Maki to check balances, swap, or send funds\n')
+  if (worldEnabled) {
+    if (existingSmartAccountAddress) {
+      output.write('5. Use /world status or /world register inside Maki for the World AgentKit demo flow\n')
+    } else {
+      output.write('5. After creating your smart account, run `maki world register` or `/world register`\n')
+    }
+  }
 
   if (launchAfterSetup) {
     output.write('\nLaunching Maki chat...\n\n')

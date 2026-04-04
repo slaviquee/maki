@@ -23,6 +23,7 @@ import { registerAaveTools } from './aave-tools.js'
 import { registerRecurringTools } from './recurring-tools.js'
 import { registerAuditTools } from './audit-tools.js'
 import { registerAgentkitTools } from './agentkit-tools.js'
+import { registerWorldCommands } from './world-commands.js'
 import { applyBrandingUI, registerBrandingCommands } from './branding.js'
 import type { MakiContext, SignerMode } from './context.js'
 
@@ -109,4 +110,5 @@ export default function makiExtension(pi: ExtensionAPI) {
   registerRecurringTools(pi, getCtx)
   registerAuditTools(pi, getCtx)
   registerAgentkitTools(pi, getCtx)
+  registerWorldCommands(pi, getCtx)
 }

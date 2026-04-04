@@ -5,11 +5,19 @@ import { paths } from './paths.js'
 import type { MakiConfig } from './types.js'
 import { defaultPolicy } from '../policy/defaults.js'
 
+const DEFAULT_WORLD = {
+  enabled: false,
+  defaultUrl: 'http://localhost:4021/protected',
+  allowedOrigins: [] as string[],
+  registered: false,
+}
+
 const DEFAULT_CONFIG = {
   chainId: 84532 as const,
   rpcUrl: 'https://sepolia.base.org',
   signerType: 'mock' as const,
   setupComplete: false,
+  world: DEFAULT_WORLD,
 }
 
 function inferSetupComplete(raw: Record<string, unknown>): boolean {
@@ -62,6 +70,10 @@ export function bootstrap(): MakiConfig {
 
   // Read config
   const raw = yamlParse(readFileSync(paths.config, 'utf-8')) as Record<string, unknown>
+  const rawWorld = (raw['world'] as Record<string, unknown> | undefined) ?? {}
+  const allowedOrigins = Array.isArray(rawWorld['allowedOrigins'])
+    ? rawWorld['allowedOrigins'].filter((value): value is string => typeof value === 'string')
+    : []
 
   return {
     chainId: (raw['chainId'] as MakiConfig['chainId']) ?? 84532,
@@ -75,6 +87,13 @@ export function bootstrap(): MakiConfig {
     smartAccountAddress: raw['smartAccountAddress'] as `0x${string}` | undefined,
     bundlerApiKey: (raw['bundlerApiKey'] as string) ?? undefined,
     uniswapApiKey: (raw['uniswapApiKey'] as string) ?? undefined,
+    world: {
+      enabled: (rawWorld['enabled'] as boolean) ?? DEFAULT_WORLD.enabled,
+      defaultUrl: (rawWorld['defaultUrl'] as string) ?? DEFAULT_WORLD.defaultUrl,
+      allowedOrigins,
+      registered: (rawWorld['registered'] as boolean) ?? DEFAULT_WORLD.registered,
+      registrationTx: rawWorld['registrationTx'] as `0x${string}` | undefined,
+    },
   }
 }
 

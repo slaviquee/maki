@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildPiArgs, isAgentLaunch, isSetupCommand, isSignerCommand } from './args.js'
+import { buildPiArgs, isAgentLaunch, isSetupCommand, isSignerCommand, isWorldCommand } from './args.js'
 
 describe('launcher args', () => {
   it('detects setup command aliases', () => {
@@ -13,9 +13,15 @@ describe('launcher args', () => {
     expect(isSignerCommand(['setup'])).toBe(false)
   })
 
+  it('detects world command', () => {
+    expect(isWorldCommand(['world'])).toBe(true)
+    expect(isWorldCommand(['setup'])).toBe(false)
+  })
+
   it('treats package management commands as non-agent launches', () => {
     expect(isAgentLaunch(['install', 'npm:foo'])).toBe(false)
     expect(isAgentLaunch(['signer', 'start'])).toBe(false)
+    expect(isAgentLaunch(['world', 'status'])).toBe(false)
     expect(isAgentLaunch(['setup'])).toBe(false)
   })
 

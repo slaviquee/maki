@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { defaultRpcUrl, inferSetupComplete } from './setup.js'
+import { defaultAllowedOrigins, normalizeWorldUrl, parseAllowedOrigins } from './world.js'
 
 describe('setup helpers', () => {
   it('infers setup completion from explicit flag', () => {
@@ -17,5 +18,15 @@ describe('setup helpers', () => {
     expect(defaultRpcUrl(84532)).toBe('https://sepolia.base.org')
     expect(defaultRpcUrl(8453)).toBe('https://mainnet.base.org')
     expect(defaultRpcUrl(11155111)).toBe('https://ethereum-sepolia-rpc.publicnode.com')
+  })
+
+  it('normalizes World AgentKit setup values', () => {
+    expect(normalizeWorldUrl('')).toBe('http://localhost:4021/protected')
+    expect(parseAllowedOrigins('https://demo.example, https://second.example')).toEqual([
+      'https://demo.example',
+      'https://second.example',
+    ])
+    expect(defaultAllowedOrigins('http://localhost:4021/protected')).toEqual([])
+    expect(defaultAllowedOrigins('https://demo.example/protected')).toEqual(['https://demo.example'])
   })
 })
