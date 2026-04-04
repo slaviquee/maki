@@ -12,7 +12,7 @@
 
 import { decodeAbiParameters, decodeFunctionData, type Hex, parseAbiParameters } from 'viem'
 import { erc20Abi } from '../../wallet-core/erc20-abi.js'
-import { getUniswapAddresses } from './addresses.js'
+import { findToken } from '../../wallet-core/tokens.js'
 import type { ApiTransactionRequest, QuoteResponse, RoutingType } from './api-types.js'
 import type { SupportedChainId } from '../../config/types.js'
 
@@ -132,6 +132,12 @@ export interface ValidationResult {
 
 function sameAddress(a: string, b: string): boolean {
   return a.toLowerCase() === b.toLowerCase()
+}
+
+function wrappedNativeToken(chainId: SupportedChainId): string {
+  const weth = findToken(chainId, 'WETH')
+  if (!weth) throw new Error(`Wrapped native token not configured for chain ${chainId}`)
+  return weth.address.toLowerCase()
 }
 
 function allKnownRouters(chainId: SupportedChainId): Set<string> {
@@ -314,7 +320,7 @@ function validateClassicPlan(
   const expectedRecipient = options.expectedRecipient.toLowerCase()
   const expectedTokenIn = options.expectedTokenIn.toLowerCase()
   const expectedTokenOut = options.expectedTokenOut.toLowerCase()
-  const weth = getUniswapAddresses(expectedChainId).weth.toLowerCase()
+  const weth = wrappedNativeToken(expectedChainId)
 
   const swapCommands = commands.filter(
     (command): command is DecodedV2SwapExactIn | DecodedV3SwapExactIn =>
@@ -445,7 +451,7 @@ function validateWrapPlan(
   const expectedSwapper = options.expectedSwapper.toLowerCase()
   const expectedRecipient = options.expectedRecipient.toLowerCase()
   const expectedTokenOut = options.expectedTokenOut.toLowerCase()
-  const weth = getUniswapAddresses(expectedChainId).weth.toLowerCase()
+  const weth = wrappedNativeToken(expectedChainId)
 
   if (!sameAddress(expectedTokenOut, weth)) {
     errors.push(`WRAP routing must output WETH (${weth}), got ${expectedTokenOut}`)

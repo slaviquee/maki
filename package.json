@@ -31,34 +31,51 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@mariozechner/pi-coding-agent": "^0.65.0",
+    "@hono/node-server": "^1.19.12",
     "@mariozechner/pi-agent-core": "^0.65.0",
     "@mariozechner/pi-ai": "^0.65.0",
+    "@mariozechner/pi-coding-agent": "^0.65.0",
     "@mariozechner/pi-tui": "^0.65.0",
     "@sinclair/typebox": "^0.34.0",
-    "viem": "^2.47.0",
-    "permissionless": "^0.3.0",
+    "@worldcoin/agentkit": "^0.1.6",
+    "@x402/core": "^2.9.0",
+    "@x402/evm": "^2.9.0",
+    "@x402/hono": "^2.9.0",
     "better-sqlite3": "^12.0.0",
-    "yaml": "^2.8.0",
     "chalk": "^5.4.0",
+    "ethers": "^6.16.0",
+    "hono": "^4.12.10",
+    "permissionless": "^0.3.0",
+    "viem": "^2.47.0",
+    "yaml": "^2.8.0",
     "zod": "^3.24.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.0",
     "@types/node": "^22.0.0",
-    "typescript": "^5.7.0",
-    "vitest": "^3.2.0",
-    "eslint": "^9.0.0",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
-    "prettier": "^3.5.0"
+    "eslint": "^9.0.0",
+    "prettier": "^3.5.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.2.0"
   },
   "pi": {
-    "extensions": ["./dist/extensions"],
-    "skills": ["./src/skills"]
+    "extensions": [
+      "./dist/extensions"
+    ],
+    "skills": [
+      "./src/skills"
+    ]
   },
   "engines": {
     "node": ">=20.6.0"
   },
-  "keywords": ["pi-package", "web3", "wallet", "defi", "erc-4337"]
+  "keywords": [
+    "pi-package",
+    "web3",
+    "wallet",
+    "defi",
+    "erc-4337"
+  ]
 }
