@@ -22,6 +22,7 @@ import { registerPolicyTools } from './policy-tools.js'
 import { registerAaveTools } from './aave-tools.js'
 import { registerRecurringTools } from './recurring-tools.js'
 import { registerAuditTools } from './audit-tools.js'
+import { applyBrandingUI, registerBrandingCommands } from './branding.js'
 import type { MakiContext, SignerMode } from './context.js'
 
 export default function makiExtension(pi: ExtensionAPI) {
@@ -80,6 +81,8 @@ export default function makiExtension(pi: ExtensionAPI) {
               : 'IPC'
       extCtx.ui.setStatus('maki', `maki | ${chainName(config.chainId)} | ${signerLabel}`)
     }
+
+    applyBrandingUI(extCtx)
   })
 
   pi.on('session_shutdown', async () => {
@@ -87,7 +90,8 @@ export default function makiExtension(pi: ExtensionAPI) {
     ctx = undefined
   })
 
-  // Register all tools
+  // Register commands and tools
+  registerBrandingCommands(pi)
   registerWalletTools(pi, getCtx)
   registerBalanceTools(pi, getCtx)
   registerEnsTools(pi)

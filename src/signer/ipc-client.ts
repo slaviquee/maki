@@ -21,8 +21,38 @@ const SIGN_TIMEOUT = 120_000
 
 export function createSignerIpcClient(socketPath: string): SignerClient {
   let socket: Socket | null = null
+  let connectPromise: Promise<void> | null = null
   let buffer = ''
   const pending = new Map<string, { resolve: (v: IpcResponse) => void; reject: (e: Error) => void }>()
+
+  function resetSocket(target: Socket | null = socket) {
+    if (target && socket === target) {
+      socket = null
+    }
+  }
+
+  function rejectPending(err: Error) {
+    for (const handler of pending.values()) {
+      handler.reject(err)
+    }
+    pending.clear()
+  }
+
+  function isReconnectableError(error: unknown): boolean {
+    if (!(error instanceof Error)) {
+      return false
+    }
+
+    const code = 'code' in error ? String(error.code) : ''
+    return (
+      error.message === 'Signer not connected' ||
+      error.message === 'Signer disconnected' ||
+      code === 'EPIPE' ||
+      code === 'ECONNRESET' ||
+      code === 'ENOTCONN' ||
+      code === 'ERR_STREAM_DESTROYED'
+    )
+  }
 
   function handleData(data: Buffer) {
     buffer += data.toString('utf-8')
@@ -44,8 +74,67 @@ export function createSignerIpcClient(socketPath: string): SignerClient {
     }
   }
 
-  async function send<T>(method: SignerMethod, params: unknown, timeout = DEFAULT_TIMEOUT): Promise<T> {
-    if (!socket) {
+  async function ensureConnected(): Promise<void> {
+    if (socket && !socket.destroyed) {
+      return
+    }
+
+    socket = null
+
+    if (connectPromise) {
+      return connectPromise
+    }
+
+    connectPromise = new Promise<void>((resolve, reject) => {
+      const nextSocket = createConnection(socketPath)
+
+      const cleanup = () => {
+        nextSocket.off('connect', onConnect)
+        nextSocket.off('error', onInitialError)
+      }
+
+      const onConnect = () => {
+        cleanup()
+        socket = nextSocket
+        attachSocket(nextSocket)
+        connectPromise = null
+        resolve()
+      }
+
+      const onInitialError = (err: Error) => {
+        cleanup()
+        resetSocket(nextSocket)
+        connectPromise = null
+        reject(err)
+      }
+
+      nextSocket.once('connect', onConnect)
+      nextSocket.once('error', onInitialError)
+    })
+
+    return connectPromise
+  }
+
+  function attachSocket(nextSocket: Socket) {
+    nextSocket.on('data', handleData)
+    nextSocket.on('error', (err) => {
+      resetSocket(nextSocket)
+      rejectPending(err)
+    })
+    nextSocket.on('close', () => {
+      const wasActive = socket === nextSocket
+      resetSocket(nextSocket)
+      if (wasActive && pending.size > 0) {
+        rejectPending(new Error('Signer disconnected'))
+      }
+    })
+  }
+
+  async function sendOnce<T>(method: SignerMethod, params: unknown, timeout = DEFAULT_TIMEOUT): Promise<T> {
+    await ensureConnected()
+
+    const activeSocket = socket
+    if (!activeSocket) {
       throw new Error('Signer not connected')
     }
 
@@ -73,31 +162,52 @@ export function createSignerIpcClient(socketPath: string): SignerClient {
         },
       })
 
-      socket!.write(JSON.stringify(request) + '\n')
+      try {
+        activeSocket.write(JSON.stringify(request) + '\n', (err) => {
+          if (!err) {
+            return
+          }
+          if (socket === activeSocket) {
+            activeSocket.destroy()
+            resetSocket(activeSocket)
+          }
+          pending.delete(id)
+          clearTimeout(timer)
+          reject(err)
+        })
+      } catch (error) {
+        if (socket === activeSocket) {
+          activeSocket.destroy()
+          resetSocket(activeSocket)
+        }
+        pending.delete(id)
+        clearTimeout(timer)
+        reject(error instanceof Error ? error : new Error(String(error)))
+      }
     })
+  }
+
+  async function send<T>(method: SignerMethod, params: unknown, timeout = DEFAULT_TIMEOUT, attempt = 0): Promise<T> {
+    try {
+      return await sendOnce<T>(method, params, timeout)
+    } catch (error) {
+      if (attempt === 0 && isReconnectableError(error)) {
+        resetSocket()
+        return send<T>(method, params, timeout, attempt + 1)
+      }
+      throw error
+    }
   }
 
   return {
     async connect() {
-      return new Promise<void>((resolve, reject) => {
-        socket = createConnection(socketPath, () => resolve())
-        socket.on('data', handleData)
-        socket.on('error', (err) => {
-          for (const handler of pending.values()) {
-            handler.reject(err)
-          }
-          pending.clear()
-          reject(err)
-        })
-        socket.on('close', () => {
-          socket = null
-        })
-      })
+      return ensureConnected()
     },
 
     disconnect() {
       socket?.destroy()
       socket = null
+      connectPromise = null
       for (const handler of pending.values()) {
         handler.reject(new Error('Signer disconnected'))
       }

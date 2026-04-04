@@ -15,6 +15,7 @@ final class SecureEnclaveSigner {
     private let signingAccount = "signing"
 
     private var signingKey: SecureEnclave.P256.Signing.PrivateKey?
+    private var signingKeyData: Data?
 
     enum SignerError: Error, LocalizedError {
         case secureEnclaveNotAvailable
@@ -70,6 +71,7 @@ final class SecureEnclaveSigner {
         let created = try createSigningKey()
         try storeKeyInKeychain(created, account: signingAccount)
         signingKey = created
+        signingKeyData = created.dataRepresentation
         return created
     }
 
@@ -91,6 +93,10 @@ final class SecureEnclaveSigner {
     }
 
     private func loadKeyFromKeychainData(account: String) throws -> Data {
+        if account == signingAccount, let signingKeyData {
+            return signingKeyData
+        }
+
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: keychainService,
@@ -112,6 +118,9 @@ final class SecureEnclaveSigner {
             throw SignerError.keyNotFound
         }
 
+        if account == signingAccount {
+            signingKeyData = data
+        }
         return data
     }
 
@@ -138,6 +147,9 @@ final class SecureEnclaveSigner {
 
         let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
         if addStatus == errSecSuccess {
+            if account == signingAccount {
+                signingKeyData = data
+            }
             return
         }
         if addStatus != errSecDuplicateItem {
@@ -156,6 +168,9 @@ final class SecureEnclaveSigner {
         guard updateStatus == errSecSuccess else {
             throw SignerError.keychainStoreFailed(updateStatus)
         }
+        if account == signingAccount {
+            signingKeyData = data
+        }
     }
 
     func deleteKey() throws {
@@ -169,6 +184,7 @@ final class SecureEnclaveSigner {
             throw SignerError.keychainStoreFailed(status)
         }
         signingKey = nil
+        signingKeyData = nil
     }
 
     // MARK: - Public key export
@@ -310,12 +326,24 @@ final class SecureEnclaveSigner {
     // MARK: - Status
 
     func hasKey() -> Bool {
-        return signingKey != nil || (try? loadKeyFromKeychain(account: signingAccount)) != nil
+        if signingKey != nil || signingKeyData != nil {
+            return true
+        }
+
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: keychainService,
+            kSecAttrAccount as String: signingAccount,
+            kSecMatchLimit as String: kSecMatchLimitOne,
+        ]
+
+        let status = SecItemCopyMatching(query as CFDictionary, nil)
+        return status == errSecSuccess
     }
 
     func status() -> StatusResult {
         let hasKey = self.hasKey()
-        let pubKey = hasKey ? (try? getPublicKeyHex()) : nil
+        let pubKey = (signingKey != nil || signingKeyData != nil) ? (try? getPublicKeyHex()) : nil
         return StatusResult(
             ready: true,
             signerType: "secure-enclave",

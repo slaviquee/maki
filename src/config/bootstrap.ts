@@ -1,4 +1,5 @@
 import { mkdirSync, existsSync, writeFileSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { stringify as yamlStringify, parse as yamlParse } from 'yaml'
 import { paths } from './paths.js'
 import type { MakiConfig } from './types.js'
@@ -25,9 +26,27 @@ function inferSetupComplete(raw: Record<string, unknown>): boolean {
 
 export function bootstrap(): MakiConfig {
   // Create directory structure
-  for (const dir of [paths.root, paths.dbDir, paths.keysDir]) {
+  const agentDir = join(paths.root, 'agent')
+  for (const dir of [paths.root, paths.dbDir, paths.keysDir, agentDir]) {
     if (!existsSync(dir)) {
       mkdirSync(dir, { recursive: true })
+    }
+  }
+
+  // Suppress Pi's default startup header so the Maki-branded header takes over
+  const agentSettings = join(agentDir, 'settings.json')
+  if (!existsSync(agentSettings)) {
+    writeFileSync(agentSettings, JSON.stringify({ quietStartup: true }, null, 2), 'utf-8')
+  } else {
+    try {
+      const existing = JSON.parse(readFileSync(agentSettings, 'utf-8')) as Record<string, unknown>
+      if (existing['quietStartup'] !== true) {
+        existing['quietStartup'] = true
+        writeFileSync(agentSettings, JSON.stringify(existing, null, 2), 'utf-8')
+      }
+    } catch {
+      // Corrupted settings — rewrite
+      writeFileSync(agentSettings, JSON.stringify({ quietStartup: true }, null, 2), 'utf-8')
     }
   }
 
