@@ -4,41 +4,47 @@
   <img src="docs/assets/maki-mascot.png" alt="Maki mascot" width="220" />
 </p>
 
-Hardware-signed onchain agent for everyday DeFi, built on Pi: deterministic execution, isolated keys, local policy guardrails, and human-backed verification.
+Maki - hardware-signed onchain agent for everyday DeFi.
 
-Maki is designed around one hard rule: the model can interpret intent, but it can never directly move funds.
+Built on Pi. Deterministic execution. Isolated keys. Local policy enforcement. Human-backed verification via World AgentKit.
 
-- Skills are prompt-only. They shape intent and UX, but never build calldata or sign.
-- Tools are typed. They call deterministic wallet-core and protocol adapters, not freeform model code.
-- Every write is simulated, policy-checked, and rendered as a deterministic summary before approval.
+One hard rule: the model interprets intent. It never moves funds.
+
+## Architecture
+
+- Skills are prompt-only. They shape intent and UX. They never build calldata. They never sign.
+- Tools are typed. They invoke deterministic wallet-core and protocol adapters, not freeform model output.
+- Every write is simulated, policy-checked, and rendered as a deterministic summary before it reaches the approval boundary.
 - Signing is isolated behind a separate local signer over schema-strict IPC.
-- World AgentKit is integrated as a proof layer for remote agent access: Maki can prove it acts on behalf of a human-backed agent wallet.
+- World AgentKit serves as the proof layer: Maki can cryptographically prove it acts on behalf of a human-backed agent wallet.
 
-Today:
+## Signing Paths
 
-- **Secure Enclave** is the main smart-account path
-- **Ledger** is available as a hardware-backed EOA path
+- **Secure Enclave** - primary smart-account path
+- **Ledger** - hardware-backed EOA path
 
-## Why Maki
+## What Maki Is
 
-Maki is not trying to be less capable than OpenClaw-style agents. It is trying to be narrower where that matters most: moving money onchain.
+Full agentic capability - natural-language intent, multi-step reasoning, tool use, protocol execution - with hardware-isolated key material between the model and the chain.
 
-- Maki gives DeFi users the same core agentic benefit: natural-language intent, multi-step reasoning, tool use, and protocol execution.
-- But it is tailored for onchain users instead of broad desktop autonomy.
-- Maki is wallet-specific, not an all-powerful desktop bot.
-- The execution path is first-party and deterministic.
-- There is no “let the model improvise shell commands until something works” path for moving funds.
-- Protocol/API responses are validated before they enter the signing pipeline.
-- Local policy, human approval, and hardware-backed signing sit between the model and the chain.
+Maki does not trade power for safety. It enforces safety structurally: the model has the same reasoning and orchestration authority as any broad desktop agent, but signing keys, calldata construction, and fund movement are physically separated from the model runtime. The agent is capable. The keys are unreachable.
 
-Compared to OpenClaw-style agents, Maki is safer for money movement because it relies on hard boundaries, not prompt discipline alone:
+- First-party, deterministic execution path - no "let the model improvise shell commands until something works"
+- Protocol and API responses are validated before entering the signing pipeline
+- Local policy, human approval, and hardware-backed signing sit between the model and the chain
 
-- Skills in Maki do not execute. They cannot silently add a new exfiltration or shell-execution path.
-- The wallet path is not exposed as arbitrary browser/file/shell authority.
-- Prompt injection into content is not trusted to “behave”; the design reduces authority and narrows the blast radius instead.
-- High-risk actions still terminate in a hardware-backed approval boundary, not in a broad agent runtime.
+## Why Hard Boundaries, Not Prompt Discipline
 
-Today, Maki enforces policy locally before signing. The next step is to push the strongest controls on-chain into the smart account itself: spending limits, allowlists, automation scopes, and delayed admin actions.
+In broad agent runtimes, security depends on the model behaving correctly. Maki's design assumes it won't:
+
+- Skills do not execute. They cannot silently introduce an exfiltration or shell-execution path.
+- The wallet path is not exposed as arbitrary browser, file, or shell authority.
+- Prompt injection into content is not trusted to "behave" - authority is structurally reduced and blast radius is narrowed by design.
+- High-risk actions terminate at a hardware-backed approval boundary, not inside a general-purpose agent runtime.
+
+## Next: On-Chain Enforcement
+
+Today, policy is enforced locally before signing. Next step: push the strongest controls into the smart account itself - spending limits, allowlists, automation scopes, and delayed admin actions.
 
 ## Install
 
