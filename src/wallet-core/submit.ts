@@ -63,13 +63,36 @@ export async function submitUserOperation(
     paymaster: pimlicoClient,
   })
 
-  const userOpHash = await bundlerClient.sendUserOperation({
-    calls: calls.map((c) => ({
-      to: c.to,
-      data: c.data ?? ('0x' as Hex),
-      value: c.value ?? 0n,
-    })),
-  })
+  const formattedCalls = calls.map((c) => ({
+    to: c.to,
+    data: c.data ?? ('0x' as Hex),
+    value: c.value ?? 0n,
+  }))
+
+  const sendWithLiveGasPrice = async (): Promise<Hex> => {
+    const gasPrice = await pimlicoClient.getUserOperationGasPrice()
+
+    return bundlerClient.sendUserOperation({
+      calls: formattedCalls,
+      maxFeePerGas: gasPrice.fast.maxFeePerGas,
+      maxPriorityFeePerGas: gasPrice.fast.maxPriorityFeePerGas,
+    })
+  }
+
+  let userOpHash: Hex
+  try {
+    userOpHash = await sendWithLiveGasPrice()
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    if (
+      message.includes('maxPriorityFeePerGas must be at least') ||
+      message.includes('use pimlico_getUserOperationGasPrice')
+    ) {
+      userOpHash = await sendWithLiveGasPrice()
+    } else {
+      throw error
+    }
+  }
 
   const receipt = await bundlerClient.waitForUserOperationReceipt({
     hash: userOpHash,
